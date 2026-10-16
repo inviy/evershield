@@ -7,9 +7,9 @@
 **Shield everything, everywhere.** Find what your web app exposes to the
 browser before attackers do.
 
-> Status: pre-release. The finding model and CLI skeleton are in place; the
-> first scanner (built-artifact scan) is in progress. Follow the
-> [roadmap](docs/design.md#roadmap) or open an issue to help shape it.
+> Status: pre-release. Layer 1 (built-artifact scan) works today with four
+> rules and Next.js / plain adapters. Layers 2 and 3 are next; follow the
+> [roadmap](docs/design.md#roadmap) or open an issue to help shape them.
 
 ## Why
 
@@ -33,12 +33,26 @@ actually get.
 ## Quick start
 
 ```bash
-# scan a built artifact directory (coming in v0.1)
-npx evershield scan ./dist
+# scan a built artifact directory
+npx evershield scan ./dist            # Vite, CRA, Astro, static sites, …
+npx evershield scan ./.next           # Next.js: only browser-facing files are scanned
+
+# machine-readable output and a stricter gate for CI
+npx evershield scan ./dist --format json --fail-on medium --min-confidence low
 ```
 
-Until v0.1 ships, the command prints its help and the finding model is
-available from the package for early integrations.
+Exit code `0` means nothing blocking, `1` means findings at or above the
+gate (default: severity ≥ high **and** confidence ≥ medium), `2` means a
+usage or runtime error. Matched values are never printed in full.
+
+What layer 1 catches today, with the reasoning behind each severity and
+confidence, is in [docs/rules.md](docs/rules.md):
+
+- `artifact/secret-like-string`: provider keys, private key blocks, Supabase
+  `service_role` JWTs, and name-based high-entropy values
+- `artifact/source-map-published`: shipped `.map` files and inline maps
+- `artifact/sensitive-env-name`: `SERVICE_ROLE`, `*_SECRET`, `DATABASE_URL`, …
+- `artifact/internal-endpoint`: private IPs, `.internal` hosts, dev fallbacks
 
 ## Principles
 
