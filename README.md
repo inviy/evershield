@@ -98,7 +98,18 @@ identity identically. The audit only ever talks to `baseUrl`.
 
 ## In CI
 
-The GitHub Action scans your build and uploads the result to the Security
+Fastest path: run this in your project root.
+
+```bash
+npx evershield init
+```
+
+It detects the framework (Next.js, Vite, Astro, SvelteKit, Nuxt, CRA), the
+build directory and package manager, and writes `evershield.config.json`
+and `.github/workflows/evershield.yml`. Existing files are left alone
+unless you pass `--force`.
+
+Or write the workflow yourself. The GitHub Action scans your build and uploads the result to the Security
 tab as code-scanning alerts:
 
 ```yaml
@@ -122,6 +133,18 @@ jobs:
 Inputs: `path` (required), `fail-on`, `min-confidence`, `config`, `adapter`,
 `sarif-file`, `upload-sarif`, `version`. The step fails when evershield
 exits 1 (blocking findings) or 2 (error), after the SARIF upload.
+
+## In Claude Code
+
+```
+/plugin marketplace add inviy/evershield
+/plugin install evershield@evershield
+```
+
+The plugin adds an `evershield` skill (Claude checks the server-side
+boundary whenever it touches response fields, plan branches, public env
+vars or `public/`) and an `/evershield` command that builds and scans the
+project.
 
 ## Allowlisting with a reason
 

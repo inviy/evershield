@@ -9,6 +9,11 @@ change rule defaults and output shapes; each such change is listed.
 
 ### Added
 
+- `evershield init` detects the framework, build directory and package
+  manager, and writes `evershield.config.json` and a GitHub workflow.
+  Never overwrites without `--force`.
+- Claude Code plugin (`/plugin marketplace add inviy/evershield`): an
+  exposure-guard skill and an `/evershield` command.
 - Layer 2: `evershield audit` calls configured endpoints as each identity
   (credentials from environment variables only) and compares responses.
   Rules: `response/expected-absent-field-present`,

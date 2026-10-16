@@ -4,6 +4,7 @@ import { parseArgs } from "node:util";
 
 import { runAudit } from "./audit/run.ts";
 import { applyIgnores, type Config, ConfigError, loadConfig } from "./config.ts";
+import { runInit } from "./init.ts";
 import { VERSION, type Confidence, type Severity } from "./index.ts";
 import { CONFIDENCES, DEFAULT_GATE, type Format, type Gate, isBlocking, renderJson, renderText, type Report, SEVERITIES } from "./report/index.ts";
 import { renderSarif } from "./report/sarif.ts";
@@ -21,6 +22,8 @@ const HELP = `evershield ${VERSION}
 Shield everything, everywhere.
 
 Usage:
+  evershield init [--force]         Detect your framework and write evershield.config.json
+                                    and a GitHub workflow that scans every pull request
   evershield scan <dir> [options]   Layer 1: scan a built web artifact directory
   evershield audit [options]        Layer 2: call configured endpoints as each identity
                                     and compare what they receive (needs config "audit")
@@ -145,6 +148,29 @@ export async function run(argv: readonly string[]): Promise<CliResult> {
   }
   if (command === "--version" || command === "-v" || command === "version") {
     return { code: 0, stdout: `${VERSION}\n`, stderr: "" };
+  }
+  if (command === "init") {
+    const unknown = rest.filter((arg) => arg !== "--force");
+    if (unknown.length > 0) return usageError(`init: unexpected argument "${unknown[0]}"`);
+    try {
+      const { detection, written, skipped } = await runInit(process.cwd(), { force: rest.includes("--force") });
+      const lines = [
+        `evershield init · detected ${detection.framework} · build output ${detection.buildDir} · ${detection.packageManager}`,
+        ...written.map((file) => `  created  ${file}`),
+        ...skipped.map((file) => `  skipped  ${file} (exists; use --force to overwrite)`),
+        "",
+        "Next:",
+        `  1. Build, then try it locally:  npx evershield scan ${detection.buildDir}`,
+        "  2. Commit the workflow; every pull request is scanned and findings appear in the Security tab.",
+        "  3. Known-safe matches go in evershield.config.json under \"ignore\", each with a reason.",
+      ];
+      if (detection.framework === "unknown") {
+        lines.push("", `Could not detect a framework; edit the build step and path in .github/workflows/evershield.yml.`);
+      }
+      return { code: 0, stdout: `${lines.join("\n")}\n`, stderr: "" };
+    } catch (error) {
+      return failure("init", error);
+    }
   }
   if (command !== "scan" && command !== "audit") {
     return usageError(`unknown command "${command}"`);
