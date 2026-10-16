@@ -61,6 +61,43 @@ test("applyIgnores matches on rule, path glob and message substring", () => {
   assert.equal(kept[1]!.evidence[0]!.kind === "file" ? kept[1]!.evidence[0]!.path : "", "static/chunks/app.js.map");
 });
 
+test("audit config: validates shape and refuses literal credentials", () => {
+  const good = parseConfig(
+    {
+      audit: {
+        baseUrl: "https://api.example.com/ignored/path",
+        tiers: ["anonymous", "pro"],
+        identities: { anonymous: {}, pro: { headers: { Authorization: "Bearer ${EVERSHIELD_PRO}" } } },
+        endpoints: [{ method: "post", path: "/api/x", body: { a: 1 }, tiered: true, expect: { anonymous: { absent: ["detail"] } } }],
+      },
+    },
+    "cfg",
+  );
+  assert.equal(good.audit?.baseUrl, "https://api.example.com");
+  assert.equal(good.audit?.endpoints[0]?.method, "POST");
+  assert.deepEqual(good.audit?.endpoints[0]?.expect, { anonymous: { absent: ["detail"] } });
+
+  const base = { baseUrl: "https://api.example.com", tiers: ["a"], identities: { a: {} }, endpoints: [{ path: "/x" }] };
+  assert.throws(() => parseConfig({ audit: { ...base, identities: { a: { headers: { Authorization: "Bearer abc123" } } } } }, "cfg"), /literal credentials/);
+  assert.throws(() => parseConfig({ audit: { ...base, tiers: ["ghost"] } }, "cfg"), /"ghost" which is not in identities/);
+  assert.throws(() => parseConfig({ audit: { ...base, baseUrl: "ftp://x" } }, "cfg"), /http or https/);
+  assert.throws(() => parseConfig({ audit: { ...base, endpoints: [{ path: "api/x" }] } }, "cfg"), /must start with/);
+  assert.throws(() => parseConfig({ audit: { ...base, endpoints: [{ path: "/x", expect: { nobody: {} } }] } }, "cfg"), /not a defined identity/);
+});
+
+test("ignore path globs match response endpoints too", () => {
+  const responseFinding: Finding = {
+    ruleId: "response/identical-across-tiers",
+    layer: "response",
+    severity: "low",
+    confidence: "low",
+    message: "GET /health returns the same body",
+    evidence: [{ kind: "response", endpoint: "GET /health", identity: "anonymous", jsonPath: "$" }],
+  };
+  const { ignored } = applyIgnores([responseFinding], [{ ruleId: "*", path: "GET /health", reason: "health check is public" }]);
+  assert.equal(ignored.length, 1);
+});
+
 test("loadConfig: default file is optional, explicit file is not, invalid JSON is a ConfigError", async () => {
   await withTempDir({}, async (root) => {
     const missing = await loadConfig(`${root}/nope.json`).catch((error: unknown) => error);

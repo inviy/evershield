@@ -109,6 +109,54 @@ test("a config without reasons or a missing explicit config is a usage error", a
   );
 });
 
+test("audit without an audit block is a config error; with one it runs and gates", async () => {
+  const noBlock = await run(["audit", "--config", "/definitely/not/here.json"]);
+  assert.equal(noBlock.code, 2);
+  assert.match(noBlock.stderr, /cannot read config/);
+
+  await withTempDir({ "cfg.json": JSON.stringify({ ignore: [] }) }, async (root) => {
+    const result = await run(["audit", "--config", `${root}/cfg.json`]);
+    assert.equal(result.code, 2);
+    assert.match(result.stderr, /no "audit" block/);
+  });
+
+  const unreachable = { audit: { baseUrl: "http://127.0.0.1:9", tiers: ["a"], identities: { a: {} }, endpoints: [{ path: "/x" }], timeoutMs: 2000 } };
+  await withTempDir({ "cfg.json": JSON.stringify(unreachable) }, async (root) => {
+    const result = await run(["audit", "--config", `${root}/cfg.json`]);
+    assert.equal(result.code, 2, "an audit that evaluated nothing must not pass");
+    assert.match(result.stderr, /nothing was audited/);
+  });
+
+  const { createServer } = await import("node:http");
+  const server = createServer((req, res) => {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ plan: req.headers.authorization ? "pro" : "free", premium_report: { pages: 3 } }));
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as { port: number };
+  process.env.EVERSHIELD_TEST_CLI = "t";
+  try {
+    const config = {
+      audit: {
+        baseUrl: `http://127.0.0.1:${port}`,
+        tiers: ["free", "pro"],
+        identities: { free: {}, pro: { headers: { Authorization: "Bearer ${EVERSHIELD_TEST_CLI}" } } },
+        endpoints: [{ path: "/api/report", expect: { free: { absent: ["premium_report"] } } }],
+      },
+    };
+    await withTempDir({ "cfg.json": JSON.stringify(config) }, async (root) => {
+      const result = await run(["audit", "--config", `${root}/cfg.json`]);
+      assert.equal(result.code, 1);
+      assert.match(result.stdout, /response audit · 1 endpoint\(s\) × 2 identities \(free < pro\)/);
+      assert.match(result.stdout, /✖ \[high\/high\] GET \/api\/report returns "premium_report" to free/);
+      assert.match(result.stdout, /• \[medium\/medium\] .*the name suggests a higher tier's data/);
+    });
+  } finally {
+    delete process.env.EVERSHIELD_TEST_CLI;
+    server.close();
+  }
+});
+
 test("low-confidence findings never fail the build by default; the gate can be tightened or disabled", async () => {
   await withTempDir({ "assets/app.js": `const config = { apiKey: "${fake.highEntropy()}" };` }, async (root) => {
     const lenient = await run(["scan", root]);

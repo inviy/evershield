@@ -7,9 +7,10 @@
 **Shield everything, everywhere.** Find what your web app exposes to the
 browser before attackers do.
 
-> Status: pre-release. Layer 1 (built-artifact scan) works today with four
-> rules and Next.js / plain adapters. Layers 2 and 3 are next; follow the
-> [roadmap](docs/design.md#roadmap) or open an issue to help shape them.
+> Status: pre-release. Layer 1 (built-artifact scan) and layer 2
+> (privilege-differential response audit) work today. Layer 3 is next;
+> follow the [roadmap](docs/design.md#roadmap) or open an issue to help
+> shape it.
 
 ## Why
 
@@ -56,6 +57,44 @@ confidence, is in [docs/rules.md](docs/rules.md):
 - `artifact/source-map-published`: shipped `.map` files and inline maps
 - `artifact/sensitive-env-name`: `SERVICE_ROLE`, `*_SECRET`, `DATABASE_URL`, …
 - `artifact/internal-endpoint`: private IPs, `.internal` hosts, dev fallbacks
+
+## Audit what each plan actually receives
+
+Layer 2 calls your own API as each identity you configure and compares the
+responses. Credentials are referenced from environment variables, never
+written in the config:
+
+```json
+{
+  "audit": {
+    "baseUrl": "https://api.example.com",
+    "tiers": ["anonymous", "free", "pro"],
+    "identities": {
+      "anonymous": {},
+      "free": { "headers": { "Authorization": "Bearer ${EVERSHIELD_FREE_TOKEN}" } },
+      "pro":  { "headers": { "Authorization": "Bearer ${EVERSHIELD_PRO_TOKEN}" } }
+    },
+    "endpoints": [
+      {
+        "method": "POST",
+        "path": "/api/analyze",
+        "body": { "text": "sample" },
+        "tiered": true,
+        "expect": { "free": { "absent": ["perplexity", "burstiness"] } }
+      }
+    ]
+  }
+}
+```
+
+```bash
+EVERSHIELD_FREE_TOKEN=… EVERSHIELD_PRO_TOKEN=… npx evershield audit
+```
+
+It reports fields the config says a tier must not receive, fields whose
+names mark them as a higher tier's (`premium_*`, `pro_only`, `internal_*`),
+credential-like fields in any response, and endpoints that answer every
+identity identically. The audit only ever talks to `baseUrl`.
 
 ## In CI
 

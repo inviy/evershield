@@ -15,6 +15,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import type { AuditConfig, EndpointConfig, HttpMethod, IdentityConfig } from "./audit/types.ts";
 import type { Confidence, Finding, Severity } from "./index.ts";
 import { CONFIDENCES, type Gate, SEVERITIES } from "./report/index.ts";
 
@@ -32,6 +33,8 @@ export interface IgnoreRule {
 export interface Config {
   gate?: Partial<Gate>;
   ignore: IgnoreRule[];
+  /** Layer 2 settings; `evershield audit` requires this block. */
+  audit?: AuditConfig;
 }
 
 export const DEFAULT_CONFIG_FILE = "evershield.config.json";
@@ -86,7 +89,96 @@ export function parseConfig(raw: unknown, source: string): Config {
     });
   }
 
+  if (raw.audit !== undefined) config.audit = parseAuditConfig(raw.audit, `${source}: audit`);
+
   return config;
+}
+
+const METHODS: readonly HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+const CREDENTIAL_HEADERS = new Set(["authorization", "cookie", "x-api-key", "api-key", "x-auth-token"]);
+
+function parseHeaders(raw: unknown, where: string): Record<string, string> {
+  if (!isRecord(raw)) throw new ConfigError(`${where} must be an object of header name → value`);
+  const headers: Record<string, string> = {};
+  for (const [name, value] of Object.entries(raw)) {
+    if (typeof value !== "string") throw new ConfigError(`${where}.${name} must be a string`);
+    if (CREDENTIAL_HEADERS.has(name.toLowerCase()) && !/\$\{[A-Z_][A-Z0-9_]*\}/.test(value)) {
+      throw new ConfigError(
+        `${where}.${name} must reference an environment variable such as "Bearer \${EVERSHIELD_PRO_TOKEN}"; literal credentials are not allowed in config`,
+      );
+    }
+    headers[name] = value;
+  }
+  return headers;
+}
+
+function parseAuditConfig(raw: unknown, where: string): AuditConfig {
+  if (!isRecord(raw)) throw new ConfigError(`${where} must be an object`);
+
+  if (typeof raw.baseUrl !== "string") throw new ConfigError(`${where}.baseUrl is required`);
+  let base: URL;
+  try {
+    base = new URL(raw.baseUrl);
+  } catch {
+    throw new ConfigError(`${where}.baseUrl is not a valid URL`);
+  }
+  if (base.protocol !== "http:" && base.protocol !== "https:") throw new ConfigError(`${where}.baseUrl must be http or https`);
+
+  if (!isRecord(raw.identities) || Object.keys(raw.identities).length === 0) {
+    throw new ConfigError(`${where}.identities must define at least one identity`);
+  }
+  const identities: Record<string, IdentityConfig> = {};
+  for (const [name, value] of Object.entries(raw.identities)) {
+    if (!isRecord(value)) throw new ConfigError(`${where}.identities.${name} must be an object`);
+    const identity: IdentityConfig = {};
+    if (value.headers !== undefined) identity.headers = parseHeaders(value.headers, `${where}.identities.${name}.headers`);
+    identities[name] = identity;
+  }
+
+  if (!Array.isArray(raw.tiers) || raw.tiers.length === 0 || !raw.tiers.every((tier) => typeof tier === "string")) {
+    throw new ConfigError(`${where}.tiers must list identity names from least to most privileged`);
+  }
+  const tiers = raw.tiers as string[];
+  for (const tier of tiers) {
+    if (identities[tier] === undefined) throw new ConfigError(`${where}.tiers names "${tier}" which is not in identities`);
+  }
+
+  if (!Array.isArray(raw.endpoints) || raw.endpoints.length === 0) throw new ConfigError(`${where}.endpoints must list at least one endpoint`);
+  const endpoints: EndpointConfig[] = raw.endpoints.map((entry, index) => {
+    const at = `${where}.endpoints[${index}]`;
+    if (!isRecord(entry)) throw new ConfigError(`${at} must be an object`);
+    const method = (typeof entry.method === "string" ? entry.method : "GET").toUpperCase();
+    if (!(METHODS as readonly string[]).includes(method)) throw new ConfigError(`${at}.method must be one of ${METHODS.join(", ")}`);
+    if (typeof entry.path !== "string" || !entry.path.startsWith("/")) throw new ConfigError(`${at}.path must start with "/" (relative to baseUrl)`);
+    const endpoint: EndpointConfig = { method: method as HttpMethod, path: entry.path };
+    if (entry.headers !== undefined) endpoint.headers = parseHeaders(entry.headers, `${at}.headers`);
+    if (entry.body !== undefined) endpoint.body = entry.body;
+    if (entry.tiered !== undefined) {
+      if (typeof entry.tiered !== "boolean") throw new ConfigError(`${at}.tiered must be a boolean`);
+      endpoint.tiered = entry.tiered;
+    }
+    if (entry.expect !== undefined) {
+      if (!isRecord(entry.expect)) throw new ConfigError(`${at}.expect must be an object keyed by identity`);
+      endpoint.expect = {};
+      for (const [identity, expectation] of Object.entries(entry.expect)) {
+        if (identities[identity] === undefined) throw new ConfigError(`${at}.expect.${identity} is not a defined identity`);
+        if (!isRecord(expectation)) throw new ConfigError(`${at}.expect.${identity} must be an object`);
+        const absent = expectation.absent;
+        if (absent !== undefined && !(Array.isArray(absent) && absent.every((path) => typeof path === "string" && path.length > 0))) {
+          throw new ConfigError(`${at}.expect.${identity}.absent must be an array of JSON paths`);
+        }
+        endpoint.expect[identity] = absent === undefined ? {} : { absent: absent as string[] };
+      }
+    }
+    return endpoint;
+  });
+
+  const audit: AuditConfig = { baseUrl: base.origin, tiers, identities, endpoints };
+  if (raw.timeoutMs !== undefined) {
+    if (typeof raw.timeoutMs !== "number" || raw.timeoutMs <= 0) throw new ConfigError(`${where}.timeoutMs must be a positive number`);
+    audit.timeoutMs = raw.timeoutMs;
+  }
+  return audit;
 }
 
 /**
@@ -138,7 +230,10 @@ function matches(rule: IgnoreRule, finding: Finding): boolean {
   if (rule.ruleId !== "*" && rule.ruleId !== finding.ruleId) return false;
   const first = finding.evidence[0];
   if (rule.path !== undefined) {
-    if (first === undefined || first.kind !== "file" || !globToRegExp(rule.path).test(first.path)) return false;
+    // For file evidence the glob matches the file path; for response
+    // evidence it matches "METHOD /path" so one entry can cover an endpoint.
+    const subject = first?.kind === "file" ? first.path : first?.kind === "response" ? first.endpoint : undefined;
+    if (subject === undefined || !globToRegExp(rule.path).test(subject)) return false;
   }
   if (rule.match !== undefined) {
     const haystack = `${finding.message}\n${first?.excerpt ?? ""}`;

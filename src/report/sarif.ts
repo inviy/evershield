@@ -3,20 +3,21 @@
  * dashboards ingest. One run per scan; one rule entry per distinct ruleId;
  * one result per finding with its first evidence as the primary location.
  *
- * Paths are relative to the scanned directory, not the repository root,
- * because build output is usually not committed. Consumers that need
- * repository paths can post-process `artifactLocation.uri`.
+ * File paths are relative to the scanned directory, not the repository
+ * root, because build output is usually not committed. Response evidence
+ * has no file, so it is reported as a logical location (endpoint, identity
+ * and JSON path).
  */
-import { type Finding, VERSION } from "../index.ts";
+import { RESPONSE_RULES } from "../audit/rules.ts";
+import { type Confidence, type Finding, type Severity, VERSION } from "../index.ts";
 import { ARTIFACT_RULES } from "../rules/index.ts";
 import { helpUri } from "../rules/types.ts";
-import type { ArtifactScanResult } from "../scan/artifact.ts";
-import { type Gate, isBlocking } from "./index.ts";
+import { type Gate, isBlocking, type Report } from "./index.ts";
 
 type SarifLevel = "error" | "warning" | "note";
 
-function level(finding: Finding): SarifLevel {
-  switch (finding.severity) {
+function levelFor(severity: Severity): SarifLevel {
+  switch (severity) {
     case "critical":
     case "high":
       return "error";
@@ -27,38 +28,71 @@ function level(finding: Finding): SarifLevel {
   }
 }
 
-function location(finding: Finding): object[] {
+function locations(finding: Finding): object[] {
   const first = finding.evidence[0];
-  if (first === undefined || first.kind !== "file") return [];
-  const region =
-    first.line === undefined ? {} : { region: { startLine: first.line, startColumn: first.column ?? 1 } };
-  return [{ physicalLocation: { artifactLocation: { uri: first.path }, ...region } }];
+  if (first === undefined) return [];
+  if (first.kind === "file") {
+    const region = first.line === undefined ? {} : { region: { startLine: first.line, startColumn: first.column ?? 1 } };
+    return [{ physicalLocation: { artifactLocation: { uri: first.path }, ...region } }];
+  }
+  if (first.kind === "response") {
+    return [
+      {
+        logicalLocations: [
+          { name: first.jsonPath, fullyQualifiedName: `${first.endpoint} as ${first.identity} → ${first.jsonPath}`, kind: "member" },
+        ],
+      },
+    ];
+  }
+  return [{ logicalLocations: [{ name: first.selector, fullyQualifiedName: `${first.url} ${first.selector}`, kind: "element" }] }];
 }
 
-export function renderSarif(result: ArtifactScanResult, gate: Gate): string {
+interface RuleMeta {
+  defaultSeverity: Severity;
+  defaultConfidence: Confidence;
+}
+
+const KNOWN_RULES = new Map<string, RuleMeta>([
+  ...ARTIFACT_RULES.map((rule): [string, RuleMeta] => [rule.id, rule]),
+  ...RESPONSE_RULES.map((rule): [string, RuleMeta] => [rule.id, rule]),
+]);
+
+function invocationProperties(result: Report, gate: Gate): Record<string, unknown> {
+  if (result.layer === "artifact") {
+    return { layer: result.layer, adapter: result.adapter, filesScanned: result.filesScanned, ignored: result.ignored, gate };
+  }
+  return {
+    layer: result.layer,
+    identities: result.identities,
+    endpointsAudited: result.endpointsAudited,
+    responsesEvaluated: result.responsesEvaluated,
+    warnings: result.warnings,
+    ignored: result.ignored,
+    gate,
+  };
+}
+
+export function renderSarif(result: Report, gate: Gate): string {
   const ruleIds = [...new Set(result.findings.map((finding) => finding.ruleId))].sort();
-  const knownRules = new Map(ARTIFACT_RULES.map((rule) => [rule.id, rule]));
 
   const rules = ruleIds.map((id) => {
-    const rule = knownRules.get(id);
+    const meta = KNOWN_RULES.get(id);
     return {
       id,
       name: id.split("/").pop() ?? id,
       shortDescription: { text: id },
       helpUri: helpUri(id),
-      defaultConfiguration: {
-        level: rule === undefined ? "warning" : level({ severity: rule.defaultSeverity } as Finding),
-      },
-      properties: rule === undefined ? {} : { defaultSeverity: rule.defaultSeverity, defaultConfidence: rule.defaultConfidence },
+      defaultConfiguration: { level: meta === undefined ? "warning" : levelFor(meta.defaultSeverity) },
+      properties: meta === undefined ? {} : { defaultSeverity: meta.defaultSeverity, defaultConfidence: meta.defaultConfidence },
     };
   });
 
   const results = result.findings.map((finding) => ({
     ruleId: finding.ruleId,
     ruleIndex: ruleIds.indexOf(finding.ruleId),
-    level: level(finding),
+    level: levelFor(finding.severity),
     message: { text: finding.remediation === undefined ? finding.message : `${finding.message}. ${finding.remediation}` },
-    locations: location(finding),
+    locations: locations(finding),
     properties: {
       severity: finding.severity,
       confidence: finding.confidence,
@@ -84,7 +118,7 @@ export function renderSarif(result: ArtifactScanResult, gate: Gate): string {
             executionSuccessful: true,
             startTimeUtc: result.startedAt,
             endTimeUtc: result.finishedAt,
-            properties: { adapter: result.adapter, filesScanned: result.filesScanned, ignored: result.ignored, gate },
+            properties: invocationProperties(result, gate),
           },
         ],
         results,

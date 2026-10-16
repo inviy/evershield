@@ -75,6 +75,46 @@ boundary before the first octet. Library defaults do match: supabase-js
 ships `http://localhost:9999` as its fallback auth URL, which is why that
 match is low/low and never blocks.
 
+## Layer 2: response
+
+Each rule inspects one endpoint observed as every configured identity.
+Only 2xx JSON responses are evaluated.
+
+### response/expected-absent-field-present
+
+The config says identity X must not receive path P, and it did (non-null).
+The operator's own contract makes this **high / high**. A path covers
+everything nested under it. `null` counts as withheld, so a server that
+sends `"perplexity": null` to free users passes.
+
+### response/sensitive-field
+
+A field whose name is credential-like (`password`, `password_hash`,
+`secret`, `api_key`, `access_token`, `refresh_token`, `private_key`, `ssn`,
+`card_number`, `cvv`, camelCase variants) with a non-boolean value, in any
+identity's response. **High / high**: over-fetching the whole record.
+Reported once per path. `has_password: true` is not a finding.
+
+### response/higher-tier-field-in-lower-tier
+
+A field present for a tier below the top whose name marks it as privileged:
+`premium_*`, `pro_*`, `pro_only`, `paid_*`, `plus_*`, `enterprise_*`,
+`admin_*`, `internal_*`, `private_*`, `debug_*`, `cost*`, `margin*`,
+`staff_*`, `owner_only`, `*_premium`, `*_internal`, `*_cost`. Name-based,
+so **medium / medium**. Boolean flags (`is_premium: false`) are not
+findings. Promote a confirmed case to that identity's `expect.absent` and
+it becomes high/high.
+
+### response/identical-across-tiers
+
+Every identity that answered 2xx JSON received a structurally identical
+body.
+
+| Endpoint | Severity | Confidence | Why |
+|---|---|---|---|
+| declared `tiered: true` | high | medium | The tier check is not applied |
+| not declared | low | low | A prompt to declare it if it should differ |
+
 ## Adapters
 
 | Adapter | Detected by | Shipped files |

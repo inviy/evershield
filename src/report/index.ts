@@ -1,7 +1,11 @@
+import type { AuditResult } from "../audit/run.ts";
 import type { Confidence, Finding, Severity } from "../index.ts";
 import type { ArtifactScanResult } from "../scan/artifact.ts";
 
 export type Format = "text" | "json" | "sarif";
+
+/** Any layer's result. Renderers switch on `layer` for the header only. */
+export type Report = ArtifactScanResult | AuditResult;
 
 export const SEVERITIES: readonly Severity[] = ["critical", "high", "medium", "low", "info"];
 export const CONFIDENCES: readonly Confidence[] = ["high", "medium", "low"];
@@ -32,16 +36,32 @@ function location(finding: Finding): string {
   return `${first.url} ${first.selector}`;
 }
 
-export function renderText(result: ArtifactScanResult, gate: Gate): string {
-  const lines: string[] = [];
-  lines.push(`evershield ${result.version} · artifact scan · ${result.adapter} adapter · ${result.filesScanned} files`);
-  lines.push(`target: ${result.target}`);
-  lines.push("");
+function header(result: Report): string[] {
+  if (result.layer === "artifact") {
+    return [
+      `evershield ${result.version} · artifact scan · ${result.adapter} adapter · ${result.filesScanned} files`,
+      `target: ${result.target}`,
+    ];
+  }
+  return [
+    `evershield ${result.version} · response audit · ${result.endpointsAudited} endpoint(s) × ${result.identities.length} identities (${result.identities.join(" < ")}) · ${result.responsesEvaluated} responses evaluated`,
+    `target: ${result.target}`,
+  ];
+}
+
+export function renderText(result: Report, gate: Gate): string {
+  const lines: string[] = [...header(result), ""];
+
+  if (result.layer === "response" && result.warnings.length > 0) {
+    for (const warning of result.warnings) lines.push(`! ${warning}`);
+    lines.push("");
+  }
 
   const ignoredNote = result.ignored > 0 ? ` ${result.ignored} finding(s) ignored by config.` : "";
 
   if (result.findings.length === 0) {
-    lines.push(`No findings. Nothing in the shipped files matched a rule.${ignoredNote}`);
+    const what = result.layer === "artifact" ? "Nothing in the shipped files matched a rule." : "Every identity received only what it should.";
+    lines.push(`No findings. ${what}${ignoredNote}`);
     return `${lines.join("\n")}\n`;
   }
 
@@ -52,8 +72,9 @@ export function renderText(result: ArtifactScanResult, gate: Gate): string {
     const marker = blocks ? "✖" : "•";
     lines.push(`${marker} [${finding.severity}/${finding.confidence}] ${finding.message}`);
     lines.push(`    at ${location(finding)}`);
-    const excerpt = finding.evidence[0]?.excerpt;
-    if (excerpt !== undefined && finding.evidence[0]?.kind === "file" && finding.evidence[0].line !== undefined) {
+    const first = finding.evidence[0];
+    const excerpt = first?.excerpt;
+    if (excerpt !== undefined && first !== undefined && (first.kind !== "file" || first.line !== undefined)) {
       lines.push(`    evidence: ${excerpt}`);
     }
     if (finding.remediation !== undefined) lines.push(`    fix: ${finding.remediation}`);
@@ -66,7 +87,7 @@ export function renderText(result: ArtifactScanResult, gate: Gate): string {
   return `${lines.join("\n")}\n`;
 }
 
-export function renderJson(result: ArtifactScanResult, gate: Gate): string {
+export function renderJson(result: Report, gate: Gate): string {
   const blocking = result.findings.filter((finding) => isBlocking(finding, gate)).length;
   return `${JSON.stringify({ ...result, gate, blocking }, null, 2)}\n`;
 }

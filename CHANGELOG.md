@@ -5,6 +5,19 @@ All notable changes to evershield are recorded here. The format follows
 [Semantic Versioning](https://semver.org/). Until 1.0, minor versions may
 change rule defaults and output shapes; each such change is listed.
 
+## [Unreleased]
+
+### Added
+
+- Layer 2: `evershield audit` calls configured endpoints as each identity
+  (credentials from environment variables only) and compares responses.
+  Rules: `response/expected-absent-field-present`,
+  `response/sensitive-field`, `response/higher-tier-field-in-lower-tier`,
+  `response/identical-across-tiers`.
+- `audit` block in `evershield.config.json`; ignore `path` globs match
+  `METHOD /path` for response findings.
+- SARIF logical locations for response evidence.
+
 ## [0.1.0] - 2026-10-16
 
 First release: layer 1, the built-artifact scan.
@@ -34,4 +47,5 @@ First release: layer 1, the built-artifact scan.
   scanning, then fails on blocking findings.
 - Matched values are redacted in every output format.
 
+[Unreleased]: https://github.com/inviy/evershield/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/inviy/evershield/releases/tag/v0.1.0

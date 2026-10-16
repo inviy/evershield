@@ -67,6 +67,21 @@ test("renders SARIF 2.1.0 with one rule per ruleId and one result per finding", 
   assert.equal(second.properties.blocking, false);
 });
 
+test("response evidence becomes a logical location", () => {
+  const finding: Finding = {
+    ruleId: "response/expected-absent-field-present",
+    layer: "response",
+    severity: "high",
+    confidence: "high",
+    message: "POST /api/analyze returns \"perplexity\" to free",
+    evidence: [{ kind: "response", endpoint: "POST /api/analyze", identity: "free", jsonPath: "perplexity", excerpt: "object{score}" }],
+  };
+  const sarif = JSON.parse(renderSarif(result([finding]), DEFAULT_GATE)) as {
+    runs: Array<{ results: Array<{ locations: Array<{ logicalLocations: Array<{ fullyQualifiedName: string }> }> }> }>;
+  };
+  assert.equal(sarif.runs[0]!.results[0]!.locations[0]!.logicalLocations[0]!.fullyQualifiedName, "POST /api/analyze as free → perplexity");
+});
+
 test("never reproduces the matched secret: only the redacted excerpt travels", () => {
   const text = renderSarif(result([critical]), DEFAULT_GATE);
   assert.ok(!text.includes("AKIAIOSFODNN7EXAMPLE"));
