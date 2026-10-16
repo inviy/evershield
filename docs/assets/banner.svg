@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" role="img" aria-labelledby="title desc">
+  <title id="title">evershield</title>
+  <desc id="desc">Shield everything, everywhere. Find what your web app exposes to the browser before attackers do.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B1220"/>
+      <stop offset="1" stop-color="#101B33"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5B9CFF"/>
+      <stop offset="1" stop-color="#2DD4BF"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.45" r="0.6">
+      <stop offset="0" stop-color="#5B9CFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#5B9CFF" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+    <clipPath id="shieldClip">
+      <path d="M200 86 L300 118 V214 C300 268 258 306 200 326 C142 306 100 268 100 214 V118 Z"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1280" height="400" fill="url(#bg)"/>
+  <rect width="1280" height="400" fill="url(#grid)"/>
+  <circle cx="200" cy="200" r="190" fill="url(#glow)"/>
+
+  <!-- shield: three layers, outer to inner -->
+  <path d="M200 86 L300 118 V214 C300 268 258 306 200 326 C142 306 100 268 100 214 V118 Z"
+        fill="none" stroke="url(#shield)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M200 116 L274 140 V214 C274 254 243 283 200 299 C157 283 126 254 126 214 V140 Z"
+        fill="none" stroke="url(#shield)" stroke-width="4" stroke-opacity="0.65" stroke-linejoin="round"/>
+  <path d="M200 146 L248 162 V214 C248 240 228 260 200 272 C172 260 152 240 152 214 V162 Z"
+        fill="url(#shield)" fill-opacity="0.9"/>
+  <!-- the eye: what the browser sees is what we scan -->
+  <g clip-path="url(#shieldClip)">
+    <path d="M168 212 C182 194 218 194 232 212 C218 230 182 230 168 212 Z" fill="#0B1220"/>
+    <circle cx="200" cy="212" r="7" fill="#E6F0FF"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="372" y="178" fill="#F3F6FC" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif" font-size="88" font-weight="800" letter-spacing="-3">ever<tspan fill="url(#shield)">shield</tspan></text>
+  <text x="376" y="232" fill="#A9B6CF" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="500">Shield everything, everywhere.</text>
+  <text x="376" y="268" fill="#7F8DA8" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif" font-size="20">Find what your web app exposes to the browser before attackers do.</text>
+
+  <!-- three layers -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" letter-spacing="1.5">
+    <rect x="376" y="300" width="124" height="34" rx="17" fill="#5B9CFF" fill-opacity="0.14" stroke="#5B9CFF" stroke-opacity="0.5"/>
+    <text x="438" y="322" fill="#9DC2FF" text-anchor="middle">ARTIFACT</text>
+    <rect x="512" y="300" width="130" height="34" rx="17" fill="#45B8E8" fill-opacity="0.14" stroke="#45B8E8" stroke-opacity="0.5"/>
+    <text x="577" y="322" fill="#9ADCF5" text-anchor="middle">RESPONSE</text>
+    <rect x="654" y="300" width="118" height="34" rx="17" fill="#2DD4BF" fill-opacity="0.14" stroke="#2DD4BF" stroke-opacity="0.5"/>
+    <text x="713" y="322" fill="#9FEDE2" text-anchor="middle">SURFACE</text>
+  </g>
+</svg>

@@ -1,0 +1,59 @@
+{
+  "name": "evershield",
+  "version": "0.0.0",
+  "description": "Shield everything, everywhere: find what your web app exposes to the browser before attackers do",
+  "license": "MIT",
+  "author": "Lee Dongwook (@inviy)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inviy/evershield.git"
+  },
+  "homepage": "https://github.com/inviy/evershield#readme",
+  "bugs": {
+    "url": "https://github.com/inviy/evershield/issues"
+  },
+  "keywords": [
+    "security",
+    "exposure",
+    "client-side",
+    "bundle",
+    "sourcemap",
+    "secrets",
+    "authorization",
+    "paywall",
+    "static-analysis",
+    "sarif",
+    "ci",
+    "devsecops"
+  ],
+  "type": "module",
+  "bin": {
+    "evershield": "dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\"",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "prepublishOnly": "pnpm check"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.0"
+  }
+}
