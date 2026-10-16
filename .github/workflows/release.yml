@@ -1,0 +1,46 @@
+name: Release
+
+# Publishes to npm when a version tag is pushed, using npm trusted publishing
+# (OIDC): no npm token is stored anywhere. The tag must match package.json.
+#
+# One-time setup on npmjs.com (package settings → Trusted publisher):
+#   provider GitHub Actions · owner inviy · repository evershield ·
+#   workflow release.yml · environment (leave empty)
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+  id-token: write   # OIDC token for npm trusted publishing and provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - name: Ensure an npm CLI that supports trusted publishing
+        run: npm install -g npm@latest && npm --version
+      - run: pnpm install --frozen-lockfile
+      - name: Tag must match package.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::tag v$tag does not match package.json version $version"
+            exit 1
+          fi
+      - run: pnpm check
+      - name: Publish
+        run: npm publish --access public
+      - name: Smoke-test the published package
+        run: |
+          sleep 20
+          npx --yes "evershield@${GITHUB_REF_NAME#v}" --version

@@ -1,6 +1,6 @@
 {
   "name": "evershield",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Shield everything, everywhere: find what your web app exposes to the browser before attackers do",
   "license": "MIT",
   "author": "Lee Dongwook (@inviy)",

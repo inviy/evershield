@@ -1,0 +1,37 @@
+# Changelog
+
+All notable changes to evershield are recorded here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
+[Semantic Versioning](https://semver.org/). Until 1.0, minor versions may
+change rule defaults and output shapes; each such change is listed.
+
+## [0.1.0] - 2026-10-16
+
+First release: layer 1, the built-artifact scan.
+
+### Added
+
+- `evershield scan <dir>` scans a directory of built files for what should
+  not reach the browser.
+- Rules, each with a documented severity/confidence rationale and
+  true-positive and false-positive tests:
+  - `artifact/secret-like-string`: AWS, GitHub, Stripe, Slack, OpenAI and
+    Anthropic key formats, private key blocks, Supabase `service_role` JWTs,
+    and name-based high-entropy values.
+  - `artifact/source-map-published`: shipped `.map` files and inline maps.
+  - `artifact/sensitive-env-name`: server-only variable names, with or
+    without an adjacent secret-shaped value.
+  - `artifact/internal-endpoint`: private IPs, internal hostnames,
+    development fallbacks.
+- Adapters: `nextjs` (scans only browser-facing files of a `.next/` build)
+  and `plain`.
+- Output: text, `--format json`, `--format sarif` (2.1.0); `--output <file>`.
+- Gate: `--fail-on` and `--min-confidence`, default severity ≥ high with
+  confidence ≥ medium. Exit codes 0 / 1 / 2.
+- `evershield.config.json`: gate override and ignore rules that each
+  require a reason; ignored findings stay counted.
+- GitHub Action (`inviy/evershield@v0`) that scans, uploads SARIF to code
+  scanning, then fails on blocking findings.
+- Matched values are redacted in every output format.
+
+[0.1.0]: https://github.com/inviy/evershield/releases/tag/v0.1.0
