@@ -27,3 +27,5 @@ jobs:
       - run: pnpm build
       - name: Smoke-test the built CLI
         run: node dist/bin.js --version
+      - name: evershield scans its own build output
+        run: node dist/bin.js scan dist --format sarif --output evershield.sarif && node -e "JSON.parse(require('fs').readFileSync('evershield.sarif','utf8'))"

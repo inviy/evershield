@@ -1,7 +1,11 @@
+import { writeFile } from "node:fs/promises";
+import path from "node:path";
 import { parseArgs } from "node:util";
 
+import { applyIgnores, ConfigError, loadConfig } from "./config.ts";
 import { VERSION, type Confidence, type Severity } from "./index.ts";
 import { CONFIDENCES, DEFAULT_GATE, type Format, type Gate, isBlocking, renderJson, renderText, SEVERITIES } from "./report/index.ts";
+import { renderSarif } from "./report/sarif.ts";
 import { scanArtifact } from "./scan/artifact.ts";
 import { ADAPTERS, type Adapter } from "./scan/adapters.ts";
 
@@ -21,7 +25,9 @@ Usage:
   evershield --help                 Show this help
 
 Scan options:
-  --format <text|json>              Output format (default: text)
+  --format <text|json|sarif>        Output format (default: text)
+  --output <file>                   Write the report to a file; stdout gets a one-line summary
+  --config <file>                   Config file (default: ./evershield.config.json if present)
   --fail-on <severity|none>         Fail on findings at this severity or worse
                                     (critical|high|medium|low|info|none; default: high)
   --min-confidence <level>          Findings below this confidence never fail the build
@@ -41,8 +47,9 @@ function isOneOf<T extends string>(value: string, allowed: readonly T[]): value 
 }
 
 /**
- * Entry point without process side effects: takes argv (minus node and the
- * script path), returns what to print and the exit code.
+ * Entry point without process side effects beyond the optional --output
+ * file: takes argv (minus node and the script path), returns what to print
+ * and the exit code.
  */
 export async function run(argv: readonly string[]): Promise<CliResult> {
   const [command, ...rest] = argv;
@@ -64,8 +71,10 @@ export async function run(argv: readonly string[]): Promise<CliResult> {
       allowPositionals: true,
       options: {
         format: { type: "string", default: "text" },
-        "fail-on": { type: "string", default: DEFAULT_GATE.failOn },
-        "min-confidence": { type: "string", default: DEFAULT_GATE.minConfidence },
+        output: { type: "string" },
+        config: { type: "string" },
+        "fail-on": { type: "string" },
+        "min-confidence": { type: "string" },
         adapter: { type: "string" },
       },
     });
@@ -77,28 +86,53 @@ export async function run(argv: readonly string[]): Promise<CliResult> {
   if (target === undefined) return usageError("scan: missing <dir>");
 
   const format = String(parsed.values.format);
-  if (!isOneOf<Format>(format, ["text", "json"])) return usageError(`unknown --format "${format}"`);
+  if (!isOneOf<Format>(format, ["text", "json", "sarif"])) return usageError(`unknown --format "${format}"`);
 
-  const failOn = String(parsed.values["fail-on"]);
-  if (!isOneOf<Severity | "none">(failOn, [...SEVERITIES, "none"])) return usageError(`unknown --fail-on "${failOn}"`);
+  const failOnFlag = parsed.values["fail-on"] === undefined ? undefined : String(parsed.values["fail-on"]);
+  if (failOnFlag !== undefined && !isOneOf<Severity | "none">(failOnFlag, [...SEVERITIES, "none"])) {
+    return usageError(`unknown --fail-on "${failOnFlag}"`);
+  }
 
-  const minConfidence = String(parsed.values["min-confidence"]);
-  if (!isOneOf<Confidence>(minConfidence, CONFIDENCES)) return usageError(`unknown --min-confidence "${minConfidence}"`);
+  const minConfidenceFlag = parsed.values["min-confidence"] === undefined ? undefined : String(parsed.values["min-confidence"]);
+  if (minConfidenceFlag !== undefined && !isOneOf<Confidence>(minConfidenceFlag, CONFIDENCES)) {
+    return usageError(`unknown --min-confidence "${minConfidenceFlag}"`);
+  }
 
   const adapterName = parsed.values.adapter === undefined ? undefined : String(parsed.values.adapter);
   if (adapterName !== undefined && !isOneOf<Adapter["name"]>(adapterName, Object.keys(ADAPTERS) as Adapter["name"][])) {
     return usageError(`unknown --adapter "${adapterName}"`);
   }
 
-  const gate: Gate = { failOn, minConfidence };
+  const configPath = parsed.values.config === undefined ? undefined : String(parsed.values.config);
+  const outputPath = parsed.values.output === undefined ? undefined : String(parsed.values.output);
 
   try {
-    const result = await scanArtifact(target, adapterName === undefined ? {} : { adapter: adapterName });
-    const blocking = result.findings.some((finding) => isBlocking(finding, gate));
-    const stdout = format === "json" ? renderJson(result, gate) : renderText(result, gate);
-    return { code: blocking ? 1 : 0, stdout, stderr: "" };
+    const { config } = await loadConfig(configPath);
+
+    // Precedence: CLI flag, then config file, then defaults.
+    const gate: Gate = {
+      failOn: failOnFlag ?? config.gate?.failOn ?? DEFAULT_GATE.failOn,
+      minConfidence: minConfidenceFlag ?? config.gate?.minConfidence ?? DEFAULT_GATE.minConfidence,
+    };
+
+    const scanned = await scanArtifact(target, adapterName === undefined ? {} : { adapter: adapterName });
+    const { kept, ignored } = applyIgnores(scanned.findings, config.ignore);
+    const result = { ...scanned, findings: kept, ignored: ignored.length };
+
+    const blocking = result.findings.filter((finding) => isBlocking(finding, gate)).length;
+    const report =
+      format === "json" ? renderJson(result, gate) : format === "sarif" ? renderSarif(result, gate) : renderText(result, gate);
+
+    if (outputPath === undefined) {
+      return { code: blocking > 0 ? 1 : 0, stdout: report, stderr: "" };
+    }
+
+    await writeFile(path.resolve(outputPath), report);
+    const summary = `evershield: ${result.findings.length} finding(s), ${blocking} blocking, ${result.ignored} ignored · ${format} report written to ${outputPath}\n`;
+    return { code: blocking > 0 ? 1 : 0, stdout: summary, stderr: "" };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { code: 2, stdout: "", stderr: `evershield scan: ${message}\n` };
+    const prefix = error instanceof ConfigError ? "evershield config" : "evershield scan";
+    return { code: 2, stdout: "", stderr: `${prefix}: ${message}\n` };
   }
 }

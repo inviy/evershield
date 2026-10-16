@@ -1,0 +1,96 @@
+name: evershield
+description: Find what your web app exposes to the browser before attackers do. Scans a built artifact directory and uploads SARIF to code scanning.
+author: Lee Dongwook (@inviy)
+
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  path:
+    description: Built artifact directory to scan (for example dist or .next)
+    required: true
+  version:
+    description: evershield npm version to run
+    required: false
+    default: latest
+  fail-on:
+    description: Fail on findings at this severity or worse (critical|high|medium|low|info|none)
+    required: false
+    default: high
+  min-confidence:
+    description: Findings below this confidence never fail the build (high|medium|low)
+    required: false
+    default: medium
+  config:
+    description: Path to evershield.config.json. Empty means ./evershield.config.json if present.
+    required: false
+    default: ""
+  adapter:
+    description: Force an adapter (nextjs|plain). Empty means detect.
+    required: false
+    default: ""
+  sarif-file:
+    description: Where to write the SARIF report
+    required: false
+    default: evershield.sarif
+  upload-sarif:
+    description: "Upload the SARIF report to GitHub code scanning (the workflow needs the security-events: write permission)"
+    required: false
+    default: "true"
+
+outputs:
+  exit-code:
+    description: evershield exit code (0 clean, 1 blocking findings, 2 error)
+    value: ${{ steps.scan.outputs.exit-code }}
+  sarif-file:
+    description: Path of the SARIF report, when one was written
+    value: ${{ steps.scan.outputs.sarif-file }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - id: scan
+      shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_MIN_CONFIDENCE: ${{ inputs.min-confidence }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_ADAPTER: ${{ inputs.adapter }}
+        INPUT_SARIF_FILE: ${{ inputs.sarif-file }}
+      run: |
+        set +e
+        args=(scan "$INPUT_PATH" --format sarif --output "$INPUT_SARIF_FILE"
+              --fail-on "$INPUT_FAIL_ON" --min-confidence "$INPUT_MIN_CONFIDENCE")
+        [ -n "$INPUT_CONFIG" ] && args+=(--config "$INPUT_CONFIG")
+        [ -n "$INPUT_ADAPTER" ] && args+=(--adapter "$INPUT_ADAPTER")
+        npx --yes "evershield@$INPUT_VERSION" "${args[@]}"
+        code=$?
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        if [ -f "$INPUT_SARIF_FILE" ]; then
+          echo "sarif-file=$INPUT_SARIF_FILE" >> "$GITHUB_OUTPUT"
+        fi
+        exit 0
+
+    - if: inputs.upload-sarif == 'true' && steps.scan.outputs.sarif-file != ''
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.scan.outputs.sarif-file }}
+        category: evershield
+
+    - shell: bash
+      env:
+        CODE: ${{ steps.scan.outputs.exit-code }}
+      run: |
+        if [ "$CODE" = "1" ]; then
+          echo "::error::evershield found blocking exposures. See the Security tab or the SARIF report."
+        elif [ "$CODE" != "0" ]; then
+          echo "::error::evershield failed to run (exit $CODE)."
+        fi
+        exit "$CODE"

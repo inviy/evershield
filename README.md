@@ -39,6 +39,9 @@ npx evershield scan ./.next           # Next.js: only browser-facing files are s
 
 # machine-readable output and a stricter gate for CI
 npx evershield scan ./dist --format json --fail-on medium --min-confidence low
+
+# SARIF for code scanning, written to a file
+npx evershield scan ./dist --format sarif --output evershield.sarif
 ```
 
 Exit code `0` means nothing blocking, `1` means findings at or above the
@@ -53,6 +56,53 @@ confidence, is in [docs/rules.md](docs/rules.md):
 - `artifact/source-map-published`: shipped `.map` files and inline maps
 - `artifact/sensitive-env-name`: `SERVICE_ROLE`, `*_SECRET`, `DATABASE_URL`, …
 - `artifact/internal-endpoint`: private IPs, `.internal` hosts, dev fallbacks
+
+## In CI
+
+The GitHub Action scans your build and uploads the result to the Security
+tab as code-scanning alerts:
+
+```yaml
+# .github/workflows/evershield.yml
+name: evershield
+on: [pull_request, push]
+permissions:
+  contents: read
+  security-events: write   # for the SARIF upload
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci && npm run build      # produce dist/ or .next/
+      - uses: inviy/evershield@v0
+        with:
+          path: ./dist
+```
+
+Inputs: `path` (required), `fail-on`, `min-confidence`, `config`, `adapter`,
+`sarif-file`, `upload-sarif`, `version`. The step fails when evershield
+exits 1 (blocking findings) or 2 (error), after the SARIF upload.
+
+## Allowlisting with a reason
+
+Known-safe matches go in `evershield.config.json`, each with a reason:
+
+```json
+{
+  "ignore": [
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "match": "localhost:9999",
+      "reason": "supabase-js bundles this fallback URL; unreachable in production"
+    }
+  ]
+}
+```
+
+evershield refuses a config whose ignores have no `reason`, and reports how
+many findings the config removed. Details in
+[docs/configuration.md](docs/configuration.md).
 
 ## Principles
 

@@ -17,6 +17,8 @@ export interface ArtifactScanResult extends ScanSummary {
   target: string;
   adapter: Adapter["name"];
   filesScanned: number;
+  /** Findings removed by config ignore rules; they are not in `findings`. */
+  ignored: number;
 }
 
 const SEVERITY_RANK: Record<Finding["severity"], number> = {
@@ -82,6 +84,7 @@ export async function scanArtifact(
     target: root,
     adapter: adapter.name,
     filesScanned: files.length,
+    ignored: 0,
     startedAt,
     finishedAt: new Date().toISOString(),
     findings: sortFindings(findings),

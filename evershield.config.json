@@ -1,0 +1,9 @@
+{
+  "ignore": [
+    {
+      "ruleId": "artifact/sensitive-env-name",
+      "path": "rules/sensitive-env-name.js",
+      "reason": "evershield's own keyword list for this rule; CI scans dist/ to dogfood the scanner"
+    }
+  ]
+}

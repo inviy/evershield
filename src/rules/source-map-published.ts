@@ -46,7 +46,8 @@ export const sourceMapPublished: Rule = {
         severity: "high",
         confidence: "high",
         message: `Inline source map embedded in ${file.relativePath}`,
-        evidence: [{ kind: "file", path: file.relativePath, line, column, excerpt: "//# sourceMappingURL=data:application/json;…" }],
+        // Only the scheme prefix travels; the base64 payload is the whole source.
+        evidence: [{ kind: "file", path: file.relativePath, line, column, excerpt: `${match[0].slice(0, 44)}…` }],
         remediation: "Build with source maps off, or emit them as separate files that are not deployed.",
         helpUri: helpUri(sourceMapPublished.id),
       });

@@ -1,7 +1,7 @@
 import type { Confidence, Finding, Severity } from "../index.ts";
 import type { ArtifactScanResult } from "../scan/artifact.ts";
 
-export type Format = "text" | "json";
+export type Format = "text" | "json" | "sarif";
 
 export const SEVERITIES: readonly Severity[] = ["critical", "high", "medium", "low", "info"];
 export const CONFIDENCES: readonly Confidence[] = ["high", "medium", "low"];
@@ -38,8 +38,10 @@ export function renderText(result: ArtifactScanResult, gate: Gate): string {
   lines.push(`target: ${result.target}`);
   lines.push("");
 
+  const ignoredNote = result.ignored > 0 ? ` ${result.ignored} finding(s) ignored by config.` : "";
+
   if (result.findings.length === 0) {
-    lines.push("No findings. Nothing in the shipped files matched a rule.");
+    lines.push(`No findings. Nothing in the shipped files matched a rule.${ignoredNote}`);
     return `${lines.join("\n")}\n`;
   }
 
@@ -60,7 +62,7 @@ export function renderText(result: ArtifactScanResult, gate: Gate): string {
   }
 
   const gateText = gate.failOn === "none" ? "gate disabled" : `gate: severity ≥ ${gate.failOn}, confidence ≥ ${gate.minConfidence}`;
-  lines.push(`${result.findings.length} finding(s), ${blocking} blocking (${gateText}).`);
+  lines.push(`${result.findings.length} finding(s), ${blocking} blocking (${gateText}).${ignoredNote}`);
   return `${lines.join("\n")}\n`;
 }
 

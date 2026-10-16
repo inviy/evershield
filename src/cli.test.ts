@@ -63,6 +63,52 @@ test("json output is parseable and carries the gate", async () => {
   });
 });
 
+test("sarif format and --output write a report file and summarise on stdout", async () => {
+  await withTempDir({ "assets/app.js": `const k = "${fake.awsAccessKeyId()}";` }, async (root) => {
+    const result = await run(["scan", root, "--format", "sarif", "--output", `${root}/report.sarif`]);
+    assert.equal(result.code, 1);
+    assert.match(result.stdout, /1 finding\(s\), 1 blocking, 0 ignored · sarif report written to/);
+    const { readFile } = await import("node:fs/promises");
+    const sarif = JSON.parse(await readFile(`${root}/report.sarif`, "utf8")) as { version: string; runs: Array<{ results: unknown[] }> };
+    assert.equal(sarif.version, "2.1.0");
+    assert.equal(sarif.runs[0]!.results.length, 1);
+  });
+});
+
+test("config ignores remove findings with a reason and can set the gate; CLI flags win", async () => {
+  const files = {
+    "build/app.js": `const base = "http://localhost:3000"; const k = "${fake.anthropicKey()}";`,
+    "cfg.json": JSON.stringify({
+      gate: { failOn: "none" },
+      ignore: [{ ruleId: "artifact/internal-endpoint", match: "localhost:3000", reason: "dev fallback, unreachable in prod" }],
+    }),
+  };
+  await withTempDir(files, async (root) => {
+    const relaxed = await run(["scan", `${root}/build`, "--config", `${root}/cfg.json`]);
+    assert.equal(relaxed.code, 0, "config gate none disables failing");
+    assert.match(relaxed.stdout, /1 finding\(s\), 0 blocking .*1 finding\(s\) ignored by config/);
+    assert.ok(!relaxed.stdout.includes("localhost"));
+
+    const strict = await run(["scan", `${root}/build`, "--config", `${root}/cfg.json`, "--fail-on", "high"]);
+    assert.equal(strict.code, 1, "CLI flag overrides config gate");
+  });
+});
+
+test("a config without reasons or a missing explicit config is a usage error", async () => {
+  await withTempDir(
+    { "build/app.js": "ok", "cfg.json": JSON.stringify({ ignore: [{ ruleId: "*" }] }) },
+    async (root) => {
+      const noReason = await run(["scan", `${root}/build`, "--config", `${root}/cfg.json`]);
+      assert.equal(noReason.code, 2);
+      assert.match(noReason.stderr, /reason is required/);
+
+      const missing = await run(["scan", `${root}/build`, "--config", `${root}/absent.json`]);
+      assert.equal(missing.code, 2);
+      assert.match(missing.stderr, /cannot read config/);
+    },
+  );
+});
+
 test("low-confidence findings never fail the build by default; the gate can be tightened or disabled", async () => {
   await withTempDir({ "assets/app.js": `const config = { apiKey: "${fake.highEntropy()}" };` }, async (root) => {
     const lenient = await run(["scan", root]);
