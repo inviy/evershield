@@ -17,6 +17,7 @@
  * only, to show whether the tool actually recovers it.
  */
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 import type { Finding } from "./index.ts";
@@ -131,6 +132,9 @@ function reaInvocation(bin: string, args: string[]): { file: string; args: strin
 }
 
 function runRea(bin: string, target: string, timeoutMs: number): Promise<{ ok: true; output: string } | { ok: false; detail: string }> {
+  const notFound = `"${bin}" not found; install REA (npm install --global rea-agents) or pass --rea-bin <path>`;
+  // A path that does not exist is caught here, without relying on shell messages that are localized.
+  if (/[\\/]/.test(bin) && !existsSync(bin)) return Promise.resolve({ ok: false, detail: notFound });
   const invocation = reaInvocation(bin, ["analyze-javascript-application", target, "--format", "json"]);
   return new Promise((resolve) => {
     execFile(
@@ -138,10 +142,12 @@ function runRea(bin: string, target: string, timeoutMs: number): Promise<{ ok: t
       invocation.args,
       { maxBuffer: 1024 * 1024 * 1024, timeout: timeoutMs, env: { ...process.env, NO_COLOR: "1" }, shell: invocation.shell },
       (error, stdout, stderr) => {
-        // cmd.exe reports a missing command as exit code 1 with "is not recognized" on stderr.
-        const missing = (error as NodeJS.ErrnoException | null)?.code === "ENOENT" || (invocation.shell && /not recognized|cannot find/i.test(stderr));
+        // cmd.exe exits 9009 for a command it cannot find, in every locale; its message is localized.
+        // execFile puts the errno string or the exit code number in `code`.
+        const code: unknown = (error as { code?: unknown } | null)?.code;
+        const missing = code === "ENOENT" || (invocation.shell && code === 9009);
         if (error !== null && missing) {
-          resolve({ ok: false, detail: `"${bin}" not found; install REA (npm install --global rea-agents) or pass --rea-bin <path>` });
+          resolve({ ok: false, detail: notFound });
         } else if (error !== null && stdout.length === 0) {
           resolve({ ok: false, detail: `REA failed: ${(stderr || error.message).trim().split("\n")[0]}` });
         } else {
