@@ -169,3 +169,27 @@ blur.
 
 Pass `--adapter plain` to scan a Next.js directory in full, for example to
 audit what a misconfigured host would serve.
+
+### App packages
+
+`evershield scan` also takes a file. Everything in an app package ships to
+the user's device, so there is no adapter filtering; the package is read in
+memory and nothing is extracted to disk.
+
+| Package | Detected by | Scanned |
+|---|---|---|
+| Android `.apk`, `.aab` | extension and zip signature | JS bundles and web assets as text; Hermes bytecode, `classes*.dex`, binary `AndroidManifest.xml` and `resources.arsc` as strings. Images, native libraries and signatures are skipped |
+| iOS `.ipa` | extension and zip signature | `main.jsbundle` and other text assets; the app's Mach-O executable and binary plists as strings |
+| Electron `.asar` | extension | every file in the archive (except `unpacked` ones, which live beside it) |
+
+In a directory, `*.bundle`, `*.jsbundle`, `*.hbc` and `*.dex` files are read
+the same way, so an Expo export (`expo export`) or a native build directory
+can be scanned without packaging.
+
+"As strings" means the file is reduced to its printable strings, one per
+line, and the usual rules run on that; a finding's path ends in
+` (strings)` and its line is the string's index. Hermes bytecode is read
+through its string table rather than as raw bytes: Hermes packs all strings
+into one blob with no separators, and a raw pass would glue a key to its
+neighbours. The table layout is checked before it is trusted; when it does
+not match (an unknown Hermes version), a raw strings pass is used instead.

@@ -42,6 +42,12 @@ npx evershield scan ./dist --format json --fail-on medium --min-confidence low
 
 # SARIF for code scanning, written to a file
 npx evershield scan ./dist --format sarif --output evershield.sarif
+
+# mobile and desktop app packages: everything inside ships to the device
+npx evershield scan app-release.apk   # Android (.apk, .aab), incl. Hermes bytecode and DEX strings
+npx evershield scan MyApp.ipa         # iOS: main.jsbundle and the app executable's strings
+npx evershield scan app.asar          # Electron
+npx evershield scan ./dist            # an Expo / React Native export (*.hbc, *.bundle)
 ```
 
 Exit code `0` means nothing blocking, `1` means findings at or above the
@@ -199,9 +205,10 @@ many findings the config removed. Details in
 
 Every rule change runs against a [false-positive corpus](docs/corpus.md): 42
 pinned npm packages that ship to browsers (React, Vue, Firebase, Supabase,
-Auth0, Sentry, Stripe.js, PostHog, three.js, pdf.js and more) plus 9 default
-apps from Next.js, Vite, SvelteKit and Astro generators, built as deployed.
-**False positives at the default gate: 0** across 8,883 files and 172 MiB.
+Auth0, Sentry, Stripe.js, PostHog, three.js, pdf.js and more) plus 10 default
+apps from Next.js, Vite, SvelteKit, Astro and Expo (Hermes bytecode)
+generators, built as deployed. **False positives at the default gate: 0**
+across 8,886 files and 175 MiB.
 The one blocking finding is a true positive (a development build with an
 inline source map). The first run found 8 false positives, all in
 auth0-spa-js; fixing them is how the rules got here.

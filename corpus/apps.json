@@ -1,22 +1,64 @@
 {
   "$comment": "Default apps from pinned project generators, built and scanned as deployed. Generators are pinned; their dependency ranges resolve at build time, so a new upstream release can change the output. Run with: node --experimental-strip-types scripts/corpus.ts --apps",
   "apps": [
-    { "name": "vite-react-ts", "create": "npx -y create-vite@9.2.1 app --template react-ts", "output": "dist", "adapter": "plain" },
-    { "name": "vite-vue-ts", "create": "npx -y create-vite@9.2.1 app --template vue-ts", "output": "dist", "adapter": "plain" },
-    { "name": "vite-svelte-ts", "create": "npx -y create-vite@9.2.1 app --template svelte-ts", "output": "dist", "adapter": "plain" },
-    { "name": "vite-preact-ts", "create": "npx -y create-vite@9.2.1 app --template preact-ts", "output": "dist", "adapter": "plain" },
-    { "name": "vite-solid-ts", "create": "npx -y create-vite@9.2.1 app --template solid-ts", "output": "dist", "adapter": "plain" },
-    { "name": "vite-lit-ts", "create": "npx -y create-vite@9.2.1 app --template lit-ts", "output": "dist", "adapter": "plain" },
+    {
+      "name": "vite-react-ts",
+      "create": "npx -y create-vite@9.2.1 app --template react-ts",
+      "output": "dist",
+      "adapter": "plain"
+    },
+    {
+      "name": "vite-vue-ts",
+      "create": "npx -y create-vite@9.2.1 app --template vue-ts",
+      "output": "dist",
+      "adapter": "plain"
+    },
+    {
+      "name": "vite-svelte-ts",
+      "create": "npx -y create-vite@9.2.1 app --template svelte-ts",
+      "output": "dist",
+      "adapter": "plain"
+    },
+    {
+      "name": "vite-preact-ts",
+      "create": "npx -y create-vite@9.2.1 app --template preact-ts",
+      "output": "dist",
+      "adapter": "plain"
+    },
+    {
+      "name": "vite-solid-ts",
+      "create": "npx -y create-vite@9.2.1 app --template solid-ts",
+      "output": "dist",
+      "adapter": "plain"
+    },
+    {
+      "name": "vite-lit-ts",
+      "create": "npx -y create-vite@9.2.1 app --template lit-ts",
+      "output": "dist",
+      "adapter": "plain"
+    },
     {
       "name": "next-app-router",
       "create": "npx -y create-next-app@16.4.2 app --ts --app --eslint --tailwind --src-dir --import-alias '@/*' --use-npm --no-turbopack --skip-install",
       "output": ".next",
       "adapter": "nextjs"
     },
-    { "name": "sveltekit-minimal", "create": "npx -y sv@1.1.1 create app --template minimal --types ts --no-add-ons --no-install", "output": ".svelte-kit/output/client", "adapter": "plain" },
+    {
+      "name": "sveltekit-minimal",
+      "create": "npx -y sv@1.1.1 create app --template minimal --types ts --no-add-ons --no-install",
+      "output": ".svelte-kit/output/client",
+      "adapter": "plain"
+    },
     {
       "name": "astro-minimal",
       "create": "mkdir -p app/src/pages && printf '{\"name\":\"astro-minimal\",\"type\":\"module\",\"scripts\":{\"build\":\"astro build\"},\"dependencies\":{\"astro\":\"5.15.0\"}}' > app/package.json && printf '<html><body><h1>Astro</h1><script>console.log(\"hi\")</script></body></html>' > app/src/pages/index.astro",
+      "output": "dist",
+      "adapter": "plain"
+    },
+    {
+      "name": "expo-blank-hermes",
+      "create": "npx -y create-expo-app@5.0.0 app --template blank --yes",
+      "build": "npx expo export --platform android --platform ios",
       "output": "dist",
       "adapter": "plain"
     }

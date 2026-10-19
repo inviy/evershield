@@ -307,5 +307,21 @@
       "confidence": "low",
       "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
     }
+  ],
+  "app:expo-blank-hermes": [
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "_expo/static/js/android/index-<hash>.hbc (strings)",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign: React Native's Metro dev server default (http://localhost:8081), unused in a release build."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "_expo/static/js/ios/index-<hash>.hbc (strings)",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign: React Native's Metro dev server default (http://localhost:8081), unused in a release build."
+    }
   ]
 }

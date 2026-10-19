@@ -2,6 +2,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 import type { Adapter } from "./adapters.ts";
+import { toScanned } from "./archive.ts";
 
 /** One text file inside the artifact, as rules see it. */
 export interface ScannedFile {
@@ -19,6 +20,7 @@ export interface CollectOptions {
 
 const DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
 const ALWAYS_SKIP_DIRS = new Set(["node_modules", ".git"]);
+export const PACKAGED = /\.(?:bundle|jsbundle|hbc|dex)$/i;
 
 /** Cheap binary check: a NUL byte in the first 8 KiB means not text. */
 function isProbablyBinary(buffer: Buffer): boolean {
@@ -48,6 +50,14 @@ export async function collectFiles(
     const absolutePath = path.join(entry.parentPath, entry.name);
     const relativePath = toPosix(path.relative(root, absolutePath));
     if (relativePath.split("/").some((segment) => ALWAYS_SKIP_DIRS.has(segment))) continue;
+    // React Native bundles and Android bytecode in an extracted app or a native build directory.
+    if (PACKAGED.test(relativePath)) {
+      const info = await stat(absolutePath);
+      if (info.size === 0 || info.size > maxBytes) continue;
+      const scanned = toScanned(relativePath, await readFile(absolutePath), absolutePath);
+      if (scanned !== null) files.push(scanned);
+      continue;
+    }
     if (!adapter.includes(relativePath)) continue;
 
     const info = await stat(absolutePath);

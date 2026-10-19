@@ -9,6 +9,12 @@ change rule defaults and output shapes; each such change is listed.
 
 ### Added
 
+- `evershield scan` takes app packages: Android `.apk`/`.aab`, iOS `.ipa`
+  and Electron `.asar`, read in memory with no new dependencies. JS bundles
+  are scanned as text; Hermes bytecode (through its string table), DEX,
+  compiled Android XML and resources, binary plists and the iOS executable
+  as strings. `*.bundle`, `*.jsbundle`, `*.hbc` and `*.dex` in a directory
+  are read the same way, so an Expo export scans directly.
 - `experiments/rea`: reproducible check of what REA recovers from a leaky
   app and from the same app fixed with evershield.
 - False-positive regression corpus (`pnpm corpus`, `docs/corpus.md`): 42

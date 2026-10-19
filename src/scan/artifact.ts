@@ -5,7 +5,8 @@ import { type Finding, type ScanSummary, VERSION } from "../index.ts";
 import { ARTIFACT_RULES } from "../rules/index.ts";
 import type { RuleContext } from "../rules/types.ts";
 import { type Adapter, ADAPTERS, detectAdapter } from "./adapters.ts";
-import { collectFiles } from "./files.ts";
+import { type ArchiveKind, collectArchive } from "./archive.ts";
+import { collectFiles, type ScannedFile } from "./files.ts";
 
 export interface ArtifactScanOptions {
   /** Force an adapter instead of detecting one from the directory. */
@@ -15,7 +16,8 @@ export interface ArtifactScanOptions {
 export interface ArtifactScanResult extends ScanSummary {
   layer: "artifact";
   target: string;
-  adapter: Adapter["name"];
+  /** Directory adapter, or the kind of app package scanned. */
+  adapter: Adapter["name"] | ArchiveKind;
   filesScanned: number;
   /** Findings removed by config ignore rules; they are not in `findings`. */
   ignored: number;
@@ -51,7 +53,7 @@ export function sortFindings(findings: Finding[]): Finding[] {
   });
 }
 
-/** Layer 1: scan a directory of built files for what should not ship. */
+/** Layer 1: scan a directory of built files, or an app package, for what should not ship. */
 export async function scanArtifact(
   target: string,
   options: ArtifactScanOptions = {},
@@ -60,12 +62,24 @@ export async function scanArtifact(
   const root = path.resolve(target);
 
   const info = await stat(root).catch(() => null);
-  if (info === null || !info.isDirectory()) {
-    throw new Error(`not a directory: ${target}`);
+  if (info === null || (!info.isDirectory() && !info.isFile())) {
+    throw new Error(`not a directory or app package: ${target}`);
   }
 
-  const adapter = options.adapter ? ADAPTERS[options.adapter] : await detectAdapter(root);
-  const files = await collectFiles(root, adapter);
+  let adapter: Adapter;
+  let adapterName: ArtifactScanResult["adapter"];
+  let files: ScannedFile[];
+  if (info.isFile()) {
+    // An app package ships everything inside it; there is nothing for a web adapter to filter.
+    const archive = await collectArchive(root);
+    adapter = ADAPTERS.plain;
+    adapterName = archive.kind;
+    files = archive.files;
+  } else {
+    adapter = options.adapter ? ADAPTERS[options.adapter] : await detectAdapter(root);
+    adapterName = adapter.name;
+    files = await collectFiles(root, adapter);
+  }
   const context: RuleContext = {
     adapter,
     shippedPaths: new Set(files.map((file) => file.relativePath)),
@@ -82,7 +96,7 @@ export async function scanArtifact(
     version: VERSION,
     layer: "artifact",
     target: root,
-    adapter: adapter.name,
+    adapter: adapterName,
     filesScanned: files.length,
     ignored: 0,
     startedAt,

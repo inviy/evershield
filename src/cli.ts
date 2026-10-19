@@ -25,7 +25,9 @@ Shield everything, everywhere.
 Usage:
   evershield init [--force]         Detect your framework and write evershield.config.json
                                     and a GitHub workflow that scans every pull request
-  evershield scan <dir> [options]   Layer 1: scan a built web artifact directory
+  evershield scan <dir|app> [options]
+                                    Layer 1: scan a built web directory, or an app package
+                                    (.apk, .aab, .ipa, Electron .asar)
   evershield audit [options]        Layer 2: call configured endpoints as each identity
                                     and compare what they receive (needs config "audit")
   evershield surface [options]      Layer 3: open configured pages as each identity in a

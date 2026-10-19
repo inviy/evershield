@@ -20,10 +20,13 @@ import path from "node:path";
 import type { Finding } from "../src/index.ts";
 import { ADAPTERS } from "../src/scan/adapters.ts";
 import { scanArtifact } from "../src/scan/artifact.ts";
+import { PACKAGED } from "../src/scan/files.ts";
 
 interface App {
   name: string;
   create: string;
+  /** Defaults to installing dependencies and running the build script. */
+  build?: string;
   output: string;
   adapter: "plain" | "nextjs";
 }
@@ -49,8 +52,13 @@ const cache = path.join(root, ".corpus-cache");
 const SHIPPED = /\.(?:m?js|cjs|css|html?)$/i;
 const NOT_SHIPPED = /(?:\.d\.[mc]?ts$|\.map$|(?:^|\/)(?:test|tests|__tests__|spec)\/)/i;
 
+/** Content hashes in build file names change with every dependency bump; compare without them. */
+function stablePath(filePath: string): string {
+  return filePath.replace(/([-.])[0-9a-f]{8,}(?=[.-])/g, "$1<hash>");
+}
+
 function key(entry: { ruleId: string; path: string }): string {
-  return `${entry.ruleId} ${entry.path}`;
+  return `${entry.ruleId} ${stablePath(entry.path)}`;
 }
 
 async function fetchPackage(spec: string): Promise<string> {
@@ -97,10 +105,10 @@ async function buildApp(app: App): Promise<Target> {
   } catch {
     await rm(dir, { recursive: true, force: true });
     await mkdir(dir, { recursive: true });
-    const env = { ...process.env, CI: "1", NEXT_TELEMETRY_DISABLED: "1", ASTRO_TELEMETRY_DISABLED: "1", npm_config_yes: "true" };
+    const env = { ...process.env, CI: "1", NEXT_TELEMETRY_DISABLED: "1", ASTRO_TELEMETRY_DISABLED: "1", EXPO_NO_TELEMETRY: "1", npm_config_yes: "true" };
     const run = (command: string, cwd: string) => execFileSync("sh", ["-c", command], { cwd, env, stdio: ["ignore", "ignore", "inherit"] });
     run(app.create, dir);
-    run("npm install --no-audit --no-fund --loglevel=error && npm run build", path.join(dir, "app"));
+    run(app.build ?? "npm install --no-audit --no-fund --loglevel=error && npm run build", path.join(dir, "app"));
   }
   // Count what the adapter scans, not the whole build directory (.next holds caches and server code).
   const adapter = ADAPTERS[app.adapter];
@@ -109,7 +117,8 @@ async function buildApp(app: App): Promise<Target> {
   for (const entry of await readdir(out, { recursive: true, withFileTypes: true })) {
     if (!entry.isFile()) continue;
     const abs = path.join(entry.parentPath, entry.name);
-    if (!adapter.includes(path.relative(out, abs).split(path.sep).join("/"))) continue;
+    const rel = path.relative(out, abs).split(path.sep).join("/");
+    if (!adapter.includes(rel) && !PACKAGED.test(rel)) continue;
     files += 1;
     bytes += (await stat(abs)).size;
   }
@@ -159,7 +168,7 @@ async function main(): Promise<number> {
     const entries: Expected[] = [];
     for (const finding of result.findings) {
       const first = finding.evidence[0];
-      const filePath = first?.kind === "file" ? first.path : "";
+      const filePath = stablePath(first?.kind === "file" ? first.path : "");
       const k = key({ ruleId: finding.ruleId, path: filePath });
       if (seen.has(k)) continue;
       seen.add(k);
