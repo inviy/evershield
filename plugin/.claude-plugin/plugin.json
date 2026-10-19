@@ -1,6 +1,6 @@
 {
   "name": "evershield",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Find what your web app exposes to the browser: secrets in bundles, source maps, paid data in free responses.",
   "author": {
     "name": "inviy",

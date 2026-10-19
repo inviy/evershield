@@ -7,6 +7,11 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-19
+
+The attacker's view: what reverse-engineering tools recover, checked
+against REA itself, across web builds and mobile and desktop app packages.
+
 ### Added
 
 - `evershield recon <dir|app>`: the attacker's view of a build or app
@@ -113,6 +118,7 @@ First release: layer 1, the built-artifact scan.
   scanning, then fails on blocking findings.
 - Matched values are redacted in every output format.
 
-[Unreleased]: https://github.com/inviy/evershield/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/inviy/evershield/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/inviy/evershield/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/inviy/evershield/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/inviy/evershield/releases/tag/v0.1.0
