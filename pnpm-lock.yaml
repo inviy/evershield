@@ -11,6 +11,9 @@ importers:
       '@types/node':
         specifier: ^22.15.0
         version: 22.20.5
+      marked:
+        specifier: 16.4.2
+        version: 16.4.2
       playwright:
         specifier: 1.56.1
         version: 1.56.1
@@ -30,6 +33,11 @@ packages:
     resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  marked@16.4.2:
+    resolution: {integrity: sha512-TI3V8YYWvkVf3KJe1dRkpnjs68JUPyEa5vjKrp1XEEJUAOaQc+Qj+L1qWbPd0SJuAdQkFU0h73sXXqwDYxsiDA==}
+    engines: {node: '>= 20'}
+    hasBin: true
 
   playwright-core@1.56.1:
     resolution: {integrity: sha512-hutraynyn31F+Bifme+Ps9Vq59hKuUCz7H1kDOcBs+2oGguKkWTU50bBWrtz34OUWmIwpBTWDxaRPXrIXkgvmQ==}
@@ -57,6 +65,8 @@ snapshots:
 
   fsevents@2.3.2:
     optional: true
+
+  marked@16.4.2: {}
 
   playwright-core@1.56.1: {}
 

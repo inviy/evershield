@@ -153,3 +153,6 @@ evershield.sarif
 
 # evershield false-positive corpus downloads
 .corpus-cache/
+
+# documentation site build output
+_site/

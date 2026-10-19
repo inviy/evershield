@@ -7,6 +7,13 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+### Added
+
+- Documentation site built from the repository's Markdown (`pnpm site`,
+  `scripts/site.ts`) and published to GitHub Pages: overview, every rule on
+  a page of its own, configuration, the false-positive corpus, the REA
+  experiment, design and changelog.
+
 ### Changed
 
 - The release workflow no longer waits three minutes for a hand-published

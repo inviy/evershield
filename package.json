@@ -50,13 +50,15 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.scripts.json",
-    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\"",
+    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\" \"scripts/**/*.test.ts\"",
     "check": "pnpm typecheck && pnpm test && pnpm build",
     "prepublishOnly": "pnpm check",
-    "corpus": "node --experimental-strip-types scripts/corpus.ts"
+    "corpus": "node --experimental-strip-types scripts/corpus.ts",
+    "site": "node --experimental-strip-types scripts/site.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "marked": "16.4.2",
     "playwright": "1.56.1",
     "playwright-core": "1.56.1",
     "typescript": "^5.8.0"
