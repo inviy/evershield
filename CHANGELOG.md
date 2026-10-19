@@ -7,6 +7,11 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-19
+
+First release published by GitHub Actions through npm trusted publishing,
+with provenance.
+
 ### Fixed
 
 - The release workflow looks for an already-published version for up to
@@ -130,7 +135,8 @@ First release: layer 1, the built-artifact scan.
   scanning, then fails on blocking findings.
 - Matched values are redacted in every output format.
 
-[Unreleased]: https://github.com/inviy/evershield/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/inviy/evershield/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/inviy/evershield/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/inviy/evershield/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/inviy/evershield/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/inviy/evershield/releases/tag/v0.1.0
