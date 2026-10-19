@@ -16,6 +16,8 @@ export interface Detection {
   packageManager: "pnpm" | "yarn" | "bun" | "npm";
   /** Shell command that produces the build directory. */
   buildCommand: string;
+  /** package.json pins a version in "packageManager"; pnpm/action-setup fails without it unless told one. */
+  packageManagerPinned?: boolean;
 }
 
 async function exists(filePath: string): Promise<boolean> {
@@ -36,6 +38,7 @@ interface PackageJson {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   scripts?: Record<string, string>;
+  packageManager?: string;
 }
 
 export async function detectProject(root: string): Promise<Detection> {
@@ -78,7 +81,7 @@ export async function detectProject(root: string): Promise<Detection> {
   const run = packageManager === "npm" ? "npm run" : packageManager;
   const buildCommand = pkg.scripts?.build !== undefined ? `${run} build` : "echo 'set your build command here' && exit 1";
 
-  return { framework, buildDir, packageManager, buildCommand };
+  return { framework, buildDir, packageManager, buildCommand, packageManagerPinned: typeof pkg.packageManager === "string" };
 }
 
 const INSTALL: Record<Detection["packageManager"], string> = {
@@ -91,7 +94,7 @@ const INSTALL: Record<Detection["packageManager"], string> = {
 export function renderWorkflow(detection: Detection): string {
   const setup =
     detection.packageManager === "pnpm"
-      ? "      - uses: pnpm/action-setup@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n          cache: pnpm\n"
+      ? `      - uses: pnpm/action-setup@v4\n${detection.packageManagerPinned === true ? "" : "        with:\n          version: 10\n"}      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n          cache: pnpm\n`
       : detection.packageManager === "bun"
         ? "      - uses: oven-sh/setup-bun@v2\n"
         : `      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n          cache: ${detection.packageManager}\n`;

@@ -23,6 +23,13 @@ change rule defaults and output shapes; each such change is listed.
   `METHOD /path` for response findings.
 - SARIF logical locations for response evidence.
 
+### Fixed
+
+- The release workflow skips `npm publish` when the tagged version is
+  already on npm, so re-tagging a published version no longer fails.
+- `evershield init` passes `version: 10` to `pnpm/action-setup` when
+  package.json has no `packageManager` field; the action fails without one.
+
 ## [0.1.0] - 2026-10-16
 
 First release: layer 1, the built-artifact scan.

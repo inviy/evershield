@@ -59,3 +59,9 @@ test("init writes both files and never overwrites without --force", async () => 
     assert.equal(forced.written.length, 2);
   });
 });
+
+test("pnpm/action-setup gets a version unless package.json pins one in packageManager", () => {
+  const base = { framework: "vite", buildDir: "dist", packageManager: "pnpm", buildCommand: "pnpm build" } as const;
+  assert.match(renderWorkflow(base), /pnpm\/action-setup@v4\n\s+with:\n\s+version: 10/);
+  assert.doesNotMatch(renderWorkflow({ ...base, packageManagerPinned: true }), /version: 10/);
+});
