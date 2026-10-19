@@ -17,6 +17,7 @@ import path from "node:path";
 
 import type { AuditConfig, EndpointConfig, HttpMethod, IdentityConfig } from "./audit/types.ts";
 import type { Confidence, Finding, Severity } from "./index.ts";
+import type { PageConfig, PageExpectation, SurfaceConfig, SurfaceIdentityConfig } from "./surface/types.ts";
 import { CONFIDENCES, type Gate, SEVERITIES } from "./report/index.ts";
 
 export interface IgnoreRule {
@@ -35,6 +36,8 @@ export interface Config {
   ignore: IgnoreRule[];
   /** Layer 2 settings; `evershield audit` requires this block. */
   audit?: AuditConfig;
+  /** Layer 3 settings; `evershield surface` requires this block. */
+  surface?: SurfaceConfig;
 }
 
 export const DEFAULT_CONFIG_FILE = "evershield.config.json";
@@ -90,6 +93,7 @@ export function parseConfig(raw: unknown, source: string): Config {
   }
 
   if (raw.audit !== undefined) config.audit = parseAuditConfig(raw.audit, `${source}: audit`);
+  if (raw.surface !== undefined) config.surface = parseSurfaceConfig(raw.surface, `${source}: surface`);
 
   return config;
 }
@@ -112,9 +116,7 @@ function parseHeaders(raw: unknown, where: string): Record<string, string> {
   return headers;
 }
 
-function parseAuditConfig(raw: unknown, where: string): AuditConfig {
-  if (!isRecord(raw)) throw new ConfigError(`${where} must be an object`);
-
+function parseBaseUrl(raw: Record<string, unknown>, where: string): URL {
   if (typeof raw.baseUrl !== "string") throw new ConfigError(`${where}.baseUrl is required`);
   let base: URL;
   try {
@@ -123,6 +125,29 @@ function parseAuditConfig(raw: unknown, where: string): AuditConfig {
     throw new ConfigError(`${where}.baseUrl is not a valid URL`);
   }
   if (base.protocol !== "http:" && base.protocol !== "https:") throw new ConfigError(`${where}.baseUrl must be http or https`);
+  return base;
+}
+
+function parseTiers(raw: Record<string, unknown>, where: string, identities: Record<string, unknown>): string[] {
+  if (!Array.isArray(raw.tiers) || raw.tiers.length === 0 || !raw.tiers.every((tier) => typeof tier === "string")) {
+    throw new ConfigError(`${where}.tiers must list identity names from least to most privileged`);
+  }
+  const tiers = raw.tiers as string[];
+  for (const tier of tiers) {
+    if (identities[tier] === undefined) throw new ConfigError(`${where}.tiers names "${tier}" which is not in identities`);
+  }
+  return tiers;
+}
+
+function parseTimeout(raw: Record<string, unknown>, where: string): number | undefined {
+  if (raw.timeoutMs === undefined) return undefined;
+  if (typeof raw.timeoutMs !== "number" || raw.timeoutMs <= 0) throw new ConfigError(`${where}.timeoutMs must be a positive number`);
+  return raw.timeoutMs;
+}
+
+function parseAuditConfig(raw: unknown, where: string): AuditConfig {
+  if (!isRecord(raw)) throw new ConfigError(`${where} must be an object`);
+  const base = parseBaseUrl(raw, where);
 
   if (!isRecord(raw.identities) || Object.keys(raw.identities).length === 0) {
     throw new ConfigError(`${where}.identities must define at least one identity`);
@@ -135,13 +160,7 @@ function parseAuditConfig(raw: unknown, where: string): AuditConfig {
     identities[name] = identity;
   }
 
-  if (!Array.isArray(raw.tiers) || raw.tiers.length === 0 || !raw.tiers.every((tier) => typeof tier === "string")) {
-    throw new ConfigError(`${where}.tiers must list identity names from least to most privileged`);
-  }
-  const tiers = raw.tiers as string[];
-  for (const tier of tiers) {
-    if (identities[tier] === undefined) throw new ConfigError(`${where}.tiers names "${tier}" which is not in identities`);
-  }
+  const tiers = parseTiers(raw, where, identities);
 
   if (!Array.isArray(raw.endpoints) || raw.endpoints.length === 0) throw new ConfigError(`${where}.endpoints must list at least one endpoint`);
   const endpoints: EndpointConfig[] = raw.endpoints.map((entry, index) => {
@@ -174,11 +193,89 @@ function parseAuditConfig(raw: unknown, where: string): AuditConfig {
   });
 
   const audit: AuditConfig = { baseUrl: base.origin, tiers, identities, endpoints };
-  if (raw.timeoutMs !== undefined) {
-    if (typeof raw.timeoutMs !== "number" || raw.timeoutMs <= 0) throw new ConfigError(`${where}.timeoutMs must be a positive number`);
-    audit.timeoutMs = raw.timeoutMs;
-  }
+  const timeoutMs = parseTimeout(raw, where);
+  if (timeoutMs !== undefined) audit.timeoutMs = timeoutMs;
   return audit;
+}
+
+const ENV_REF_PRESENT = /\$\{[A-Z_][A-Z0-9_]*\}/;
+
+function parseStringList(value: unknown, where: string): string[] {
+  if (!(Array.isArray(value) && value.every((item) => typeof item === "string" && item.length > 0))) {
+    throw new ConfigError(`${where} must be an array of non-empty strings`);
+  }
+  return value as string[];
+}
+
+function parseSurfaceConfig(raw: unknown, where: string): SurfaceConfig {
+  if (!isRecord(raw)) throw new ConfigError(`${where} must be an object`);
+  const base = parseBaseUrl(raw, where);
+
+  if (!isRecord(raw.identities) || Object.keys(raw.identities).length === 0) {
+    throw new ConfigError(`${where}.identities must define at least one identity`);
+  }
+  const identities: Record<string, SurfaceIdentityConfig> = {};
+  for (const [name, value] of Object.entries(raw.identities)) {
+    const at = `${where}.identities.${name}`;
+    if (!isRecord(value)) throw new ConfigError(`${at} must be an object`);
+    const identity: SurfaceIdentityConfig = {};
+    if (value.headers !== undefined) identity.headers = parseHeaders(value.headers, `${at}.headers`);
+    if (value.cookies !== undefined) {
+      if (!isRecord(value.cookies)) throw new ConfigError(`${at}.cookies must be an object of cookie name → value`);
+      identity.cookies = {};
+      for (const [cookie, cookieValue] of Object.entries(value.cookies)) {
+        if (typeof cookieValue !== "string" || !ENV_REF_PRESENT.test(cookieValue)) {
+          throw new ConfigError(`${at}.cookies.${cookie} must reference an environment variable such as "\${EVERSHIELD_PRO_SESSION}"; literal credentials are not allowed in config`);
+        }
+        identity.cookies[cookie] = cookieValue;
+      }
+    }
+    if (value.storageState !== undefined) {
+      if (typeof value.storageState !== "string" || value.storageState.length === 0) throw new ConfigError(`${at}.storageState must be a file path`);
+      identity.storageState = value.storageState;
+    }
+    identities[name] = identity;
+  }
+
+  const tiers = parseTiers(raw, where, identities);
+
+  if (!Array.isArray(raw.pages) || raw.pages.length === 0) throw new ConfigError(`${where}.pages must list at least one page`);
+  const pages: PageConfig[] = raw.pages.map((entry, index) => {
+    const at = `${where}.pages[${index}]`;
+    if (!isRecord(entry)) throw new ConfigError(`${at} must be an object`);
+    if (typeof entry.path !== "string" || !entry.path.startsWith("/")) throw new ConfigError(`${at}.path must start with "/" (relative to baseUrl)`);
+    const page: PageConfig = { path: entry.path };
+    if (entry.waitFor !== undefined) {
+      if (typeof entry.waitFor !== "string" || entry.waitFor.length === 0) throw new ConfigError(`${at}.waitFor must be a CSS selector`);
+      page.waitFor = entry.waitFor;
+    }
+    if (entry.expect !== undefined) {
+      if (!isRecord(entry.expect)) throw new ConfigError(`${at}.expect must be an object keyed by identity`);
+      page.expect = {};
+      for (const [identity, expectation] of Object.entries(entry.expect)) {
+        if (identities[identity] === undefined) throw new ConfigError(`${at}.expect.${identity} is not a defined identity`);
+        if (!isRecord(expectation)) throw new ConfigError(`${at}.expect.${identity} must be an object`);
+        const parsed: PageExpectation = {};
+        if (expectation.absentText !== undefined) parsed.absentText = parseStringList(expectation.absentText, `${at}.expect.${identity}.absentText`);
+        if (expectation.absentSelectors !== undefined) {
+          parsed.absentSelectors = parseStringList(expectation.absentSelectors, `${at}.expect.${identity}.absentSelectors`);
+        }
+        page.expect[identity] = parsed;
+      }
+    }
+    return page;
+  });
+
+  const surface: SurfaceConfig = { baseUrl: base.origin, tiers, identities, pages };
+  const timeoutMs = parseTimeout(raw, where);
+  if (timeoutMs !== undefined) surface.timeoutMs = timeoutMs;
+  if (raw.minTextLength !== undefined) {
+    if (typeof raw.minTextLength !== "number" || !Number.isInteger(raw.minTextLength) || raw.minTextLength < 4) {
+      throw new ConfigError(`${where}.minTextLength must be an integer of at least 4`);
+    }
+    surface.minTextLength = raw.minTextLength;
+  }
+  return surface;
 }
 
 /**
@@ -231,8 +328,10 @@ function matches(rule: IgnoreRule, finding: Finding): boolean {
   const first = finding.evidence[0];
   if (rule.path !== undefined) {
     // For file evidence the glob matches the file path; for response
-    // evidence it matches "METHOD /path" so one entry can cover an endpoint.
-    const subject = first?.kind === "file" ? first.path : first?.kind === "response" ? first.endpoint : undefined;
+    // evidence it matches "METHOD /path" so one entry can cover an endpoint;
+    // DOM evidence matches the page path.
+    const subject =
+      first?.kind === "file" ? first.path : first?.kind === "response" ? first.endpoint : first?.kind === "dom" ? new URL(first.url).pathname : undefined;
     if (subject === undefined || !globToRegExp(rule.path).test(subject)) return false;
   }
   if (rule.match !== undefined) {

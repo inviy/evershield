@@ -5,6 +5,7 @@ import { parseArgs } from "node:util";
 import { runAudit } from "./audit/run.ts";
 import { applyIgnores, type Config, ConfigError, loadConfig } from "./config.ts";
 import { runInit } from "./init.ts";
+import { runSurface } from "./surface/run.ts";
 import { VERSION, type Confidence, type Severity } from "./index.ts";
 import { CONFIDENCES, DEFAULT_GATE, type Format, type Gate, isBlocking, renderJson, renderText, type Report, SEVERITIES } from "./report/index.ts";
 import { renderSarif } from "./report/sarif.ts";
@@ -27,10 +28,13 @@ Usage:
   evershield scan <dir> [options]   Layer 1: scan a built web artifact directory
   evershield audit [options]        Layer 2: call configured endpoints as each identity
                                     and compare what they receive (needs config "audit")
+  evershield surface [options]      Layer 3: open configured pages as each identity in a
+                                    headless browser and find content that is present but
+                                    hidden (needs config "surface" and Playwright)
   evershield --version              Print version
   evershield --help                 Show this help
 
-Options (both commands):
+Options (scan, audit, surface):
   --format <text|json|sarif>        Output format (default: text)
   --output <file>                   Write the report to a file; stdout gets a one-line summary
   --config <file>                   Config file (default: ./evershield.config.json if present)
@@ -172,7 +176,7 @@ export async function run(argv: readonly string[]): Promise<CliResult> {
       return failure("init", error);
     }
   }
-  if (command !== "scan" && command !== "audit") {
+  if (command !== "scan" && command !== "audit" && command !== "surface") {
     return usageError(`unknown command "${command}"`);
   }
 
@@ -193,7 +197,30 @@ export async function run(argv: readonly string[]): Promise<CliResult> {
     }
   }
 
-  if (options.positionals.length > 0) return usageError(`audit: unexpected argument "${options.positionals[0]}"`);
+  if (options.positionals.length > 0) return usageError(`${command}: unexpected argument "${options.positionals[0]}"`);
+
+  if (command === "surface") {
+    try {
+      const { config, source } = await loadConfig(options.configPath);
+      if (config.surface === undefined) {
+        throw new ConfigError(
+          source === null
+            ? "surface needs a config file with a \"surface\" block (see docs/configuration.md)"
+            : `${source} has no "surface" block (see docs/configuration.md)`,
+        );
+      }
+      const gate = gateFor(options, config);
+      const surfaced = await runSurface(config.surface);
+      if (surfaced.snapshotsEvaluated === 0) {
+        throw new Error(`no page could be evaluated, so nothing was audited:\n  ${surfaced.warnings.join("\n  ")}`);
+      }
+      const { kept, ignored } = applyIgnores(surfaced.findings, config.ignore);
+      return await finish({ ...surfaced, findings: kept, ignored: ignored.length }, gate, options);
+    } catch (error) {
+      return failure("surface", error);
+    }
+  }
+
   try {
     const { config, source } = await loadConfig(options.configPath);
     if (config.audit === undefined) {

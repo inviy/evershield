@@ -7,10 +7,9 @@
 **Shield everything, everywhere.** Find what your web app exposes to the
 browser before attackers do.
 
-> Status: pre-release. Layer 1 (built-artifact scan) and layer 2
-> (privilege-differential response audit) work today. Layer 3 is next;
-> follow the [roadmap](docs/design.md#roadmap) or open an issue to help
-> shape it.
+> Status: pre-release. All three layers work: built-artifact scan,
+> privilege-differential response audit, and rendered-surface audit. Follow
+> the [roadmap](docs/design.md#roadmap) or open an issue to help shape it.
 
 ## Why
 
@@ -95,6 +94,36 @@ It reports fields the config says a tier must not receive, fields whose
 names mark them as a higher tier's (`premium_*`, `pro_only`, `internal_*`),
 credential-like fields in any response, and endpoints that answer every
 identity identically. The audit only ever talks to `baseUrl`.
+
+## Find paywalls that only hide
+
+Layer 3 opens your pages in a headless browser as each identity and reports
+content that is in the page but hidden: blurred, `display: none`, clipped,
+or tucked into a `data-*` attribute, an inline script or `localStorage`.
+
+```json
+{
+  "surface": {
+    "baseUrl": "https://staging.example.com",
+    "tiers": ["free", "pro"],
+    "identities": {
+      "free": { "storageState": "${EVERSHIELD_FREE_STATE}" },
+      "pro":  { "storageState": "${EVERSHIELD_PRO_STATE}" }
+    },
+    "pages": [{ "path": "/report/demo" }]
+  }
+}
+```
+
+```bash
+npm install --save-dev playwright && npx playwright install chromium
+EVERSHIELD_FREE_STATE=free.json EVERSHIELD_PRO_STATE=pro.json npx evershield surface
+```
+
+The key rule compares tiers: text the Pro page shows that the Free page
+also contains, hidden, is a cosmetic paywall. Tabs and menus hidden for
+everyone never trigger it. See [the surface rules](docs/rules.md#layer-3-surface)
+and [configuration](docs/configuration.md#surface-layer-3).
 
 ## In CI
 

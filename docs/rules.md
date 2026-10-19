@@ -115,6 +115,46 @@ body.
 | declared `tiered: true` | high | medium | The tier check is not applied |
 | not declared | low | low | A prompt to declare it if it should differ |
 
+## Layer 3: surface
+
+Surface rules run on what each identity's headless browser holds after a
+page settles: every text-bearing element with whether a person can see it,
+`data-*` attributes and input values, inline scripts (including framework
+payloads such as `__NEXT_DATA__` and RSC), and `localStorage` /
+`sessionStorage`. An element counts as hidden when it or an ancestor has
+`display: none`, `visibility: hidden`, `opacity` below 0.1, a `blur()` of 2px
+or more, transparent text, zero size, or lies outside an `overflow` box
+(`max-height: 0` and similar).
+
+### surface/expected-absent-present
+
+The config says an identity must not receive a string (`absentText`) or an
+element (`absentSelectors`) on a page, and it is there: visible, hidden, in
+an attribute, a script or storage. **High / high**: the operator's contract.
+
+### surface/hidden-higher-tier-content
+
+Text the top tier can **see** is **present but hidden** for a lower tier, by
+any of the methods above or by sitting in an attribute, script or storage.
+The paywall is cosmetic: anyone on the lower tier reads it in DevTools.
+**High / high**: the same text visible to one tier and hidden in another's
+page is not a coincidence.
+
+Does not fire for UI hidden for every tier (tabs, menus, dialogs), for text
+the lower tier can also see, for text the lower tier never receives (the
+correct fix), or for strings shorter than `minTextLength` (default 12).
+Compare the same content across tiers: a demo report, a premium article, a
+plan-gated dashboard with fixture data.
+
+### surface/obscured-content
+
+A lower tier's page blurs, or renders in transparent ink, text that is not a
+placeholder. Blur is how UIs fake a paywall; legitimate hidden UI uses
+`display` or `visibility`. **High / medium**: the text may be a decoy the
+rule cannot recognise. Masks (`●●●`, `xxx`), repeated characters and lorem
+ipsum are skipped, which is also the fix: render placeholders behind the
+blur.
+
 ## Adapters
 
 | Adapter | Detected by | Shipped files |

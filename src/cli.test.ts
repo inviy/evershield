@@ -170,3 +170,14 @@ test("low-confidence findings never fail the build by default; the gate can be t
     assert.equal(off.code, 0);
   });
 });
+
+test("surface without a surface block is a config error", async () => {
+  await withTempDir({ "cfg.json": JSON.stringify({ ignore: [] }) }, async (root) => {
+    const result = await run(["surface", "--config", `${root}/cfg.json`]);
+    assert.equal(result.code, 2);
+    assert.match(result.stderr, /no "surface" block/);
+  });
+  const extra = await run(["surface", "oops"]);
+  assert.equal(extra.code, 2);
+  assert.match(extra.stderr, /surface: unexpected argument "oops"/);
+});

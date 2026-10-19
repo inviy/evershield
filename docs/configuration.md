@@ -108,6 +108,61 @@ Behind an HTTP proxy, set `NODE_USE_ENV_PROXY=1`: Node's `fetch` ignores
 `HTTPS_PROXY` by default, and the warning for a failed request says so. Ignore rules apply to response findings too: with
 response evidence the `path` glob matches `METHOD /path`.
 
+## surface (layer 3)
+
+`evershield surface` needs this block and [Playwright](https://playwright.dev)
+(`npm install --save-dev playwright && npx playwright install chromium`;
+`playwright-core` with a Chromium also works, and `EVERSHIELD_CHROMIUM_PATH`
+points at a specific browser). It opens each page as each identity, least
+privileged first, and runs the [surface rules](rules.md#layer-3-surface).
+
+```json
+{
+  "surface": {
+    "baseUrl": "https://staging.example.com",
+    "tiers": ["anonymous", "free", "pro"],
+    "identities": {
+      "anonymous": {},
+      "free": { "storageState": "${EVERSHIELD_FREE_STATE}" },
+      "pro":  { "cookies": { "session": "${EVERSHIELD_PRO_SESSION}" } }
+    },
+    "pages": [
+      {
+        "path": "/report/demo",
+        "waitFor": "[data-report-ready]",
+        "expect": { "free": { "absentText": ["Burstiness"], "absentSelectors": ["[data-pro-metric]"] } }
+      }
+    ],
+    "timeoutMs": 30000,
+    "minTextLength": 12
+  }
+}
+```
+
+| Field | Required | Meaning |
+|---|---|---|
+| `baseUrl` | yes | The origin pages are resolved against and the only origin that receives identity headers and cookies |
+| `tiers` | yes | Identity names from least to most privileged |
+| `identities.<name>.headers` | no | Added to requests for `baseUrl`'s origin only. Credential headers must use `${ENV_VAR}` |
+| `identities.<name>.cookies` | no | Name → value, set for `baseUrl`. Values must use `${ENV_VAR}` |
+| `identities.<name>.storageState` | no | Path (may use `${ENV_VAR}`) to a Playwright storage-state file with cookies and `localStorage`, e.g. from `npx playwright codegen --save-storage=free.json`. Use this for apps that keep the session in `localStorage` (Supabase, Firebase). Keep the file out of git |
+| `pages[].path` | yes | Starts with `/` |
+| `pages[].waitFor` | no | CSS selector to wait for before capturing |
+| `pages[].expect.<identity>.absentText` | no | Strings that must not appear anywhere for that identity |
+| `pages[].expect.<identity>.absentSelectors` | no | CSS selectors that must match nothing for that identity |
+| `timeoutMs` | no | Per-page navigation timeout (default 30000) |
+| `minTextLength` | no | Shortest text the differential rule compares (default 12, minimum 4) |
+
+Each page load gets a fresh browser context with service workers blocked, so
+identities never share state. Pages load one at a time and wait for network
+idle. A page that errors, returns 4xx/5xx or redirects to another origin
+(a login provider, say) is a warning, not evaluated; if nothing could be
+evaluated the command exits 2. Ignore rules apply: with DOM evidence the
+`path` glob matches the page path.
+
+Run it against staging or a preview deployment with seeded accounts, not
+against production users' data.
+
 ## Output
 
 `--format text|json|sarif` chooses the report. `--output <file>` writes it to

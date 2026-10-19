@@ -1,11 +1,12 @@
 import type { AuditResult } from "../audit/run.ts";
 import type { Confidence, Finding, Severity } from "../index.ts";
 import type { ArtifactScanResult } from "../scan/artifact.ts";
+import type { SurfaceResult } from "../surface/run.ts";
 
 export type Format = "text" | "json" | "sarif";
 
 /** Any layer's result. Renderers switch on `layer` for the header only. */
-export type Report = ArtifactScanResult | AuditResult;
+export type Report = ArtifactScanResult | AuditResult | SurfaceResult;
 
 export const SEVERITIES: readonly Severity[] = ["critical", "high", "medium", "low", "info"];
 export const CONFIDENCES: readonly Confidence[] = ["high", "medium", "low"];
@@ -33,13 +34,19 @@ function location(finding: Finding): string {
     return first.line === undefined ? first.path : `${first.path}:${first.line}:${first.column ?? 1}`;
   }
   if (first.kind === "response") return `${first.endpoint} as ${first.identity} → ${first.jsonPath}`;
-  return `${first.url} ${first.selector}`;
+  return `${first.url}${first.identity === undefined ? "" : ` as ${first.identity}`} → ${first.selector}`;
 }
 
 function header(result: Report): string[] {
   if (result.layer === "artifact") {
     return [
       `evershield ${result.version} · artifact scan · ${result.adapter} adapter · ${result.filesScanned} files`,
+      `target: ${result.target}`,
+    ];
+  }
+  if (result.layer === "surface") {
+    return [
+      `evershield ${result.version} · surface audit · ${result.pagesAudited} page(s) × ${result.identities.length} identities (${result.identities.join(" < ")}) · ${result.snapshotsEvaluated} page loads evaluated`,
       `target: ${result.target}`,
     ];
   }
@@ -52,7 +59,7 @@ function header(result: Report): string[] {
 export function renderText(result: Report, gate: Gate): string {
   const lines: string[] = [...header(result), ""];
 
-  if (result.layer === "response" && result.warnings.length > 0) {
+  if (result.layer !== "artifact" && result.warnings.length > 0) {
     for (const warning of result.warnings) lines.push(`! ${warning}`);
     lines.push("");
   }
@@ -60,7 +67,12 @@ export function renderText(result: Report, gate: Gate): string {
   const ignoredNote = result.ignored > 0 ? ` ${result.ignored} finding(s) ignored by config.` : "";
 
   if (result.findings.length === 0) {
-    const what = result.layer === "artifact" ? "Nothing in the shipped files matched a rule." : "Every identity received only what it should.";
+    const what =
+      result.layer === "artifact"
+        ? "Nothing in the shipped files matched a rule."
+        : result.layer === "surface"
+          ? "No identity's page held content it could not see."
+          : "Every identity received only what it should.";
     lines.push(`No findings. ${what}${ignoredNote}`);
     return `${lines.join("\n")}\n`;
   }

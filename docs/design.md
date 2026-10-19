@@ -112,7 +112,12 @@ Looks for:
   entitlement check resolves
 
 Layer 3 is the slowest and the most prone to false positives; it ships last
-and is opt-in.
+and is opt-in: a separate `evershield surface` command with its own config
+block, and Playwright as an optional peer dependency the other layers never
+load. False positives are contained by comparing tiers: the main rule only
+fires for text the top tier sees and a lower tier holds hidden, so UI hidden
+for everyone (tabs, menus, dialogs) never counts. Detecting values rendered
+then removed after an entitlement check is left for later.
 
 ## Finding model
 
@@ -136,8 +141,8 @@ reported but never fail a build by default.
 
 ## Interfaces
 
-- **CLI**: `evershield scan <dir>` (layer 1), `evershield audit` (layers 2
-  and 3 from config). Output: human-readable by default, `--format json`,
+- **CLI**: `evershield scan <dir>` (layer 1), `evershield audit` (layer 2)
+  and `evershield surface` (layer 3), the last two from config. Output: human-readable by default, `--format json`,
   `--format sarif`. Exit codes: 0 clean, 1 findings above the gate, 2 usage
   or runtime error.
 - **Config**: `evershield.config.json` (or `.ts`), with targets, identities

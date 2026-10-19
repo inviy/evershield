@@ -6,7 +6,7 @@
  * one finding model from day one. See docs/design.md for the rationale.
  */
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.2.0";
 
 /** How sure evershield is that a finding is real. Drives exit codes and CI gating. */
 export type Confidence = "high" | "medium" | "low";
@@ -21,7 +21,7 @@ export type Layer = "artifact" | "response" | "surface";
 export type Evidence =
   | { kind: "file"; path: string; line?: number; column?: number; excerpt?: string }
   | { kind: "response"; endpoint: string; identity: string; jsonPath: string; excerpt?: string }
-  | { kind: "dom"; url: string; selector: string; excerpt?: string };
+  | { kind: "dom"; url: string; selector: string; identity?: string; excerpt?: string };
 
 export interface Finding {
   /** Stable rule identifier, e.g. "artifact/secret-like-string". */

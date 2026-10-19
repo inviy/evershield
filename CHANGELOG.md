@@ -7,7 +7,22 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-19
+
+Layers 2 and 3: what each identity receives, and what each identity's
+browser holds but cannot see.
+
 ### Added
+
+- Layer 3: `evershield surface` opens configured pages as each identity in
+  headless Chromium (Playwright, optional peer dependency) and records text
+  with its visibility, `data-*` attributes, inline scripts and web storage.
+  Rules: `surface/hidden-higher-tier-content`, `surface/obscured-content`,
+  `surface/expected-absent-present`.
+- `surface` block in `evershield.config.json`: identities by header, cookie
+  (env references only) or Playwright storage state; per-page `waitFor`,
+  `absentText` and `absentSelectors`. Ignore `path` globs match the page
+  path for DOM evidence.
 
 - `evershield init` detects the framework, build directory and package
   manager, and writes `evershield.config.json` and a GitHub workflow.
@@ -59,5 +74,6 @@ First release: layer 1, the built-artifact scan.
   scanning, then fails on blocking findings.
 - Matched values are redacted in every output format.
 
-[Unreleased]: https://github.com/inviy/evershield/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/inviy/evershield/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/inviy/evershield/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/inviy/evershield/releases/tag/v0.1.0

@@ -6,11 +6,12 @@
  * File paths are relative to the scanned directory, not the repository
  * root, because build output is usually not committed. Response evidence
  * has no file, so it is reported as a logical location (endpoint, identity
- * and JSON path).
+ * and JSON path); DOM evidence likewise (page, identity and selector).
  */
 import { RESPONSE_RULES } from "../audit/rules.ts";
 import { type Confidence, type Finding, type Severity, VERSION } from "../index.ts";
 import { ARTIFACT_RULES } from "../rules/index.ts";
+import { SURFACE_RULES } from "../surface/rules.ts";
 import { helpUri } from "../rules/types.ts";
 import { type Gate, isBlocking, type Report } from "./index.ts";
 
@@ -44,7 +45,8 @@ function locations(finding: Finding): object[] {
       },
     ];
   }
-  return [{ logicalLocations: [{ name: first.selector, fullyQualifiedName: `${first.url} ${first.selector}`, kind: "element" }] }];
+  const as = first.identity === undefined ? "" : ` as ${first.identity}`;
+  return [{ logicalLocations: [{ name: first.selector, fullyQualifiedName: `${first.url}${as} → ${first.selector}`, kind: "element" }] }];
 }
 
 interface RuleMeta {
@@ -55,11 +57,23 @@ interface RuleMeta {
 const KNOWN_RULES = new Map<string, RuleMeta>([
   ...ARTIFACT_RULES.map((rule): [string, RuleMeta] => [rule.id, rule]),
   ...RESPONSE_RULES.map((rule): [string, RuleMeta] => [rule.id, rule]),
+  ...SURFACE_RULES.map((rule): [string, RuleMeta] => [rule.id, rule]),
 ]);
 
 function invocationProperties(result: Report, gate: Gate): Record<string, unknown> {
   if (result.layer === "artifact") {
     return { layer: result.layer, adapter: result.adapter, filesScanned: result.filesScanned, ignored: result.ignored, gate };
+  }
+  if (result.layer === "surface") {
+    return {
+      layer: result.layer,
+      identities: result.identities,
+      pagesAudited: result.pagesAudited,
+      snapshotsEvaluated: result.snapshotsEvaluated,
+      warnings: result.warnings,
+      ignored: result.ignored,
+      gate,
+    };
   }
   return {
     layer: result.layer,
