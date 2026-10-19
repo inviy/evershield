@@ -6,7 +6,7 @@
  * one finding model from day one. See docs/design.md for the rationale.
  */
 
-export const VERSION = "0.3.1";
+export const VERSION = "0.3.2";
 
 /** How sure evershield is that a finding is real. Drives exit codes and CI gating. */
 export type Confidence = "high" | "medium" | "low";

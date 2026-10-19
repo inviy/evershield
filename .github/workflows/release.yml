@@ -1,11 +1,16 @@
 name: Release
 
-# Publishes to npm when a version tag is pushed, using npm trusted publishing
-# (OIDC): no npm token is stored anywhere. The tag must match package.json.
+# Stages a release on npm when a version tag is pushed, using npm trusted
+# publishing (OIDC): no npm token is stored anywhere. The tag must match
+# package.json.
+#
+# Staged, not published: the version waits in npm's stage queue until a
+# maintainer approves it with 2FA (npmjs.com, or `npm stage approve <id>`).
+# A compromised workflow can submit a release but never make one public.
 #
 # One-time setup on npmjs.com (package settings → Trusted publisher):
 #   provider GitHub Actions · owner inviy · repository evershield ·
-#   workflow release.yml · environment (leave empty)
+#   workflow release.yml · environment (leave empty) · permission: stage publish
 
 on:
   push:
@@ -26,8 +31,8 @@ jobs:
           node-version: 22
           cache: pnpm
           registry-url: https://registry.npmjs.org
-      - name: Ensure an npm CLI that supports trusted publishing
-        run: npm install -g npm@latest && npm --version
+      - name: npm CLI with staged publishing (11.15+; npm 12 needs a newer Node 22)
+        run: npm install -g npm@11 && npm --version
       - run: pnpm install --frozen-lockfile
       - name: Chromium for the layer 3 integration test
         run: pnpm exec playwright install --with-deps --only-shell chromium
@@ -55,10 +60,17 @@ jobs:
             fi
             [ "$attempt" = 10 ] || sleep 20
           done
-      - name: Publish
+      - name: Stage for approval
         if: steps.published.outputs.exists != 'true'
-        run: npm publish --access public
-      - name: Smoke-test the published package
         run: |
-          sleep 20
-          npx --yes "evershield@${GITHUB_REF_NAME#v}" --version
+          npm stage publish --access public --provenance 2>&1 | tee stage.log
+          {
+            echo "## evershield ${GITHUB_REF_NAME} is staged, not yet public"
+            echo
+            echo "Approve it with 2FA at https://www.npmjs.com/package/evershield (staged versions),"
+            echo "or run \`npm stage list evershield\` then \`npm stage approve <stage-id>\`."
+            echo
+            echo '```'
+            cat stage.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

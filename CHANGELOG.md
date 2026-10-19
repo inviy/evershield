@@ -7,10 +7,22 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
-## [0.3.1] - 2026-10-19
+## [0.3.2] - 2026-10-19
 
-First release published by GitHub Actions through npm trusted publishing,
-with provenance.
+First release through staged publishing. Same code as 0.3.1.
+
+### Changed
+
+- Releases are staged, not published: the release workflow runs
+  `npm stage publish` through trusted publishing, and a maintainer approves
+  the staged version with 2FA before it becomes public. The workflow pins
+  npm 11 (staged publishing needs 11.15+). The 0.3.1 tag was never
+  published: its run used a direct `npm publish`, which the stage-only
+  trusted publisher correctly refused.
+
+## [0.3.1] - 2026-10-19 [NOT PUBLISHED]
+
+Tagged but never on npm; see 0.3.2.
 
 ### Fixed
 
@@ -135,7 +147,8 @@ First release: layer 1, the built-artifact scan.
   scanning, then fails on blocking findings.
 - Matched values are redacted in every output format.
 
-[Unreleased]: https://github.com/inviy/evershield/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/inviy/evershield/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/inviy/evershield/compare/v0.3.0...v0.3.2
 [0.3.1]: https://github.com/inviy/evershield/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/inviy/evershield/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/inviy/evershield/compare/v0.1.0...v0.2.0
