@@ -7,6 +7,12 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+### Fixed
+
+- The release workflow installs Chromium before `pnpm check`; without it the
+  layer 3 browser test fails in CI by design, which failed the v0.2.0 run
+  (0.2.0 itself was published by hand and is unaffected).
+
 ## [0.2.0] - 2026-10-19
 
 Layers 2 and 3: what each identity receives, and what each identity's

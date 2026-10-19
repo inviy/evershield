@@ -29,6 +29,8 @@ jobs:
       - name: Ensure an npm CLI that supports trusted publishing
         run: npm install -g npm@latest && npm --version
       - run: pnpm install --frozen-lockfile
+      - name: Chromium for the layer 3 integration test
+        run: pnpm exec playwright install --with-deps --only-shell chromium
       - name: Tag must match package.json
         run: |
           tag="${GITHUB_REF_NAME#v}"
