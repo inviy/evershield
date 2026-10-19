@@ -14,6 +14,8 @@ against REA itself, across web builds and mobile and desktop app packages.
 
 ### Added
 
+- CI also runs the full check on Windows.
+
 - `evershield recon <dir|app>`: the attacker's view of a build or app
   package. Lists what is worth taking (gated like `scan`) and the map any
   tool reconstructs anyway (hosts, API paths, source map coverage, public
@@ -36,6 +38,9 @@ against REA itself, across web builds and mobile and desktop app packages.
 
 ### Fixed
 
+- `recon --rea` on Windows: npm installs `rea` as `rea.cmd`, which needs a
+  shell; arguments are quoted for cmd.exe. Found when `npm publish` from
+  Windows failed in the recon test.
 - `artifact/secret-like-string`: a private key block needs a base64 body;
   PEM-parsing code that only names the header (auth0-spa-js) is no longer
   a critical finding. Dotted identifiers such as `auth0.lock.getTokenSilently`

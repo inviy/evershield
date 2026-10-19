@@ -7,12 +7,20 @@ import { run } from "./cli.ts";
 import { buildMap, runRecon } from "./recon.ts";
 import { fake, file, withTempDir } from "./test-support.ts";
 
-/** A stand-in for the `rea` executable that prints JSON containing whatever FAKE_REA_ECHO holds. */
+/**
+ * A stand-in for the `rea` executable that prints JSON containing whatever
+ * FAKE_REA_ECHO holds. On Windows it is a .cmd shim, as npm installs `rea`.
+ */
 async function fakeRea(dir: string): Promise<string> {
-  const bin = path.join(dir, "fake-rea.mjs");
-  await writeFile(bin, `#!/usr/bin/env node\nprocess.stdout.write(JSON.stringify({ evidence: [process.env.FAKE_REA_ECHO ?? ""] }));\n`);
-  await chmod(bin, 0o755);
-  return bin;
+  const script = path.join(dir, "fake-rea.mjs");
+  await writeFile(script, `#!/usr/bin/env node\nprocess.stdout.write(JSON.stringify({ evidence: [process.env.FAKE_REA_ECHO ?? ""] }));\n`);
+  if (process.platform === "win32") {
+    const shim = path.join(dir, "fake rea.cmd");
+    await writeFile(shim, `@"${process.execPath}" "${script}" %*\r\n`);
+    return shim;
+  }
+  await chmod(script, 0o755);
+  return script;
 }
 
 const leaky = () => ({

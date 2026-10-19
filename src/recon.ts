@@ -120,14 +120,27 @@ export function buildMap(files: ScannedFile[]): ReconMap {
   };
 }
 
+/**
+ * npm installs `rea` on Windows as `rea.cmd`, which only a shell can run, so
+ * Windows goes through cmd.exe with every argument quoted.
+ */
+function reaInvocation(bin: string, args: string[]): { file: string; args: string[]; shell: boolean } {
+  if (process.platform !== "win32") return { file: bin, args, shell: false };
+  const quote = (value: string) => `"${value.replace(/"/g, '""')}"`;
+  return { file: quote(bin), args: args.map(quote), shell: true };
+}
+
 function runRea(bin: string, target: string, timeoutMs: number): Promise<{ ok: true; output: string } | { ok: false; detail: string }> {
+  const invocation = reaInvocation(bin, ["analyze-javascript-application", target, "--format", "json"]);
   return new Promise((resolve) => {
     execFile(
-      bin,
-      ["analyze-javascript-application", target, "--format", "json"],
-      { maxBuffer: 1024 * 1024 * 1024, timeout: timeoutMs, env: { ...process.env, NO_COLOR: "1" } },
+      invocation.file,
+      invocation.args,
+      { maxBuffer: 1024 * 1024 * 1024, timeout: timeoutMs, env: { ...process.env, NO_COLOR: "1" }, shell: invocation.shell },
       (error, stdout, stderr) => {
-        if (error !== null && (error as NodeJS.ErrnoException).code === "ENOENT") {
+        // cmd.exe reports a missing command as exit code 1 with "is not recognized" on stderr.
+        const missing = (error as NodeJS.ErrnoException | null)?.code === "ENOENT" || (invocation.shell && /not recognized|cannot find/i.test(stderr));
+        if (error !== null && missing) {
           resolve({ ok: false, detail: `"${bin}" not found; install REA (npm install --global rea-agents) or pass --rea-bin <path>` });
         } else if (error !== null && stdout.length === 0) {
           resolve({ ok: false, detail: `REA failed: ${(stderr || error.message).trim().split("\n")[0]}` });

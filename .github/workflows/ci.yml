@@ -31,3 +31,18 @@ jobs:
         run: node dist/bin.js --version
       - name: evershield scans its own build output
         run: node dist/bin.js scan dist --format sarif --output evershield.sarif && node -e "JSON.parse(require('fs').readFileSync('evershield.sarif','utf8'))"
+
+  windows:
+    # Contributors and users publish from Windows; spawn and path behaviour differ there.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Chromium for the layer 3 integration test
+        run: pnpm exec playwright install --only-shell chromium
+      - run: pnpm check
