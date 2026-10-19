@@ -7,6 +7,13 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+### Fixed
+
+- The release workflow looks for an already-published version for up to
+  three minutes before publishing. 0.3.0 was published by hand moments
+  before its tag and was still being processed by the registry, so the
+  run tried to publish again and failed.
+
 ## [0.3.0] - 2026-10-19
 
 The attacker's view: what reverse-engineering tools recover, checked
