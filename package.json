@@ -26,7 +26,7 @@
     "ci",
     "devsecops",
     "playwright",
-    "paywall-bypass"
+    "dom"
   ],
   "type": "module",
   "bin": {
@@ -61,7 +61,8 @@
     "typescript": "^5.8.0"
   },
   "peerDependencies": {
-    "playwright": ">=1.40.0"
+    "playwright": ">=1.40.0",
+    "playwright-core": ">=1.40.0"
   },
   "peerDependenciesMeta": {
     "playwright": {
