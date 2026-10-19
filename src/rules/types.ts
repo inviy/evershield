@@ -6,6 +6,12 @@ export interface RuleContext {
   adapter: Adapter;
   /** Every shipped file's relative path, for cross-file checks such as source map references. */
   shippedPaths: ReadonlySet<string>;
+  /**
+   * Called with the unredacted value behind a finding, for in-process
+   * cross-checks such as `evershield recon --rea`. The value must never be
+   * stored on the finding or written anywhere.
+   */
+  onMatch?: (finding: Finding, raw: string) => void;
 }
 
 /**

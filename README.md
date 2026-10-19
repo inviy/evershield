@@ -63,6 +63,37 @@ confidence, is in [docs/rules.md](docs/rules.md):
 - `artifact/sensitive-env-name`: `SERVICE_ROLE`, `*_SECRET`, `DATABASE_URL`, …
 - `artifact/internal-endpoint`: private IPs, `.internal` hosts, dev fallbacks
 
+## Leave reverse engineers empty-handed
+
+Tools like [REA](https://github.com/morluto/rea) cannot be blocked: they run
+in the attacker's own browser, on their own copy of your app. What you
+control is what they get. `recon` shows it from their side and fails the
+build while anything is worth taking:
+
+```bash
+npx evershield recon ./dist               # or an .apk, .ipa, .asar
+npx evershield recon ./dist --rea         # also run REA itself and check each finding against its output
+```
+
+```
+Worth taking: 2 blocking, 3 total
+✖ [critical/high] Stripe secret key shipped in assets/index.js  · REA: recovered
+✖ [high/high] Source map shipped: assets/index.js.map  · REA: not checked
+• [medium/medium] Private IP address in assets/index.js: 10.0.3.7  · REA: recovered
+
+Map (informational: any tool reconstructs this from shipped code; keep server-side checks on it)
+  hosts: api.example.com (12)
+  API paths: /api/report, /api/user
+  source maps: 1 file(s), 2 original source(s), 2 with full content
+
+Verdict: 2 item(s) worth taking. Anyone running a reverse-engineering tool on this target gets them.
+```
+
+The map is what no build can hide (routes, hosts, field names); recon lists
+it so you know which endpoints need server-side authorization. With `--rea`,
+values are compared in memory and never printed. Pair it with `audit` and
+`surface` for what each plan receives at runtime.
+
 ## Audit what each plan actually receives
 
 Layer 2 calls your own API as each identity you configure and compares the
@@ -222,7 +253,8 @@ build (a secret key, an internal address, source via source maps, blurred
 Pro data in the DOM, Pro fields in a free response); evershield flagged all
 five; after the fix REA recovered none and evershield reported nothing.
 evershield does not hide your app from REA. It makes sure there is nothing
-in it worth taking.
+in it worth taking, and `evershield recon --rea` checks that against REA
+itself on every build.
 
 ## Principles
 

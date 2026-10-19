@@ -5,6 +5,8 @@ import { parseArgs } from "node:util";
 import { runAudit } from "./audit/run.ts";
 import { applyIgnores, type Config, ConfigError, loadConfig } from "./config.ts";
 import { runInit } from "./init.ts";
+import { runRecon } from "./recon.ts";
+import { renderReconJson, renderReconSarif, renderReconText } from "./report/recon.ts";
 import { runSurface } from "./surface/run.ts";
 import { VERSION, type Confidence, type Severity } from "./index.ts";
 import { CONFIDENCES, DEFAULT_GATE, type Format, type Gate, isBlocking, renderJson, renderText, type Report, SEVERITIES } from "./report/index.ts";
@@ -28,6 +30,11 @@ Usage:
   evershield scan <dir|app> [options]
                                     Layer 1: scan a built web directory, or an app package
                                     (.apk, .aab, .ipa, Electron .asar)
+  evershield recon <dir|app> [--rea] [--rea-bin <path>]
+                                    The attacker's view: what reverse-engineering tools such
+                                    as REA recover from a build or app package. Fails when
+                                    anything is worth taking; --rea checks each finding
+                                    against REA's own output
   evershield audit [options]        Layer 2: call configured endpoints as each identity
                                     and compare what they receive (needs config "audit")
   evershield surface [options]      Layer 3: open configured pages as each identity in a
@@ -178,6 +185,7 @@ export async function run(argv: readonly string[]): Promise<CliResult> {
       return failure("init", error);
     }
   }
+  if (command === "recon") return reconCommand(rest);
   if (command !== "scan" && command !== "audit" && command !== "surface") {
     return usageError(`unknown command "${command}"`);
   }
@@ -242,5 +250,48 @@ export async function run(argv: readonly string[]): Promise<CliResult> {
     return await finish({ ...audited, findings: kept, ignored: ignored.length }, gate, options);
   } catch (error) {
     return failure("audit", error);
+  }
+}
+
+async function reconCommand(rest: readonly string[]): Promise<CliResult> {
+  const args = [...rest];
+  let reaBin: string | undefined;
+  const reaAt = args.indexOf("--rea");
+  if (reaAt >= 0) {
+    args.splice(reaAt, 1);
+    reaBin = "rea";
+  }
+  const binAt = args.indexOf("--rea-bin");
+  if (binAt >= 0) {
+    const value = args[binAt + 1];
+    if (value === undefined || value.startsWith("--")) return usageError("recon: --rea-bin needs a path");
+    args.splice(binAt, 2);
+    reaBin = value;
+  }
+  const options = parseCommonOptions(args);
+  if ("code" in options) return options;
+  const target = options.positionals[0];
+  if (target === undefined) return usageError("recon: missing <dir|app>");
+  try {
+    const { config } = await loadConfig(options.configPath);
+    const gate = gateFor(options, config);
+    const result = await runRecon(target, {
+      ...(options.adapter === undefined ? {} : { adapter: options.adapter }),
+      ...(reaBin === undefined ? {} : { reaBin }),
+    });
+    const { kept, ignored } = applyIgnores(result.findings, config.ignore);
+    const keptSet = new Set(kept);
+    const filtered = { ...result, findings: kept, items: result.items.filter((item) => keptSet.has(item.finding)), ignored: ignored.length };
+    const blocking = kept.filter((finding) => isBlocking(finding, gate)).length;
+    // A requested REA check that could not run is not a pass.
+    const code = result.rea.status === "failed" ? 2 : blocking > 0 ? 1 : 0;
+    const rendered =
+      options.format === "json" ? renderReconJson(filtered, gate) : options.format === "sarif" ? renderReconSarif(filtered, gate) : renderReconText(filtered, gate);
+    const stderr = result.rea.status === "failed" ? `evershield recon: ${result.rea.detail ?? "REA failed"}\n` : "";
+    if (options.outputPath === undefined) return { code, stdout: rendered, stderr };
+    await writeFile(path.resolve(options.outputPath), rendered);
+    return { code, stdout: `evershield recon: ${filtered.items.length} item(s), ${blocking} blocking · ${options.format} report written to ${options.outputPath}\n`, stderr };
+  } catch (error) {
+    return failure("recon", error);
   }
 }

@@ -82,10 +82,11 @@ export const secretLikeString: Rule = {
   check(file, context) {
     const findings: Finding[] = [];
     const seen = new Set<string>();
-    const push = (finding: Finding, key: string) => {
+    const push = (finding: Finding, key: string, raw: string) => {
       if (seen.has(key) || findings.length >= MAX_FINDINGS_PER_FILE) return;
       seen.add(key);
       findings.push(finding);
+      context.onMatch?.(finding, raw);
     };
 
     for (const provider of PROVIDERS) {
@@ -104,6 +105,7 @@ export const secretLikeString: Rule = {
             helpUri: helpUri(secretLikeString.id),
           },
           `${provider.name}:${value}`,
+          value,
         );
       }
     }
@@ -127,6 +129,7 @@ export const secretLikeString: Rule = {
             helpUri: helpUri(secretLikeString.id),
           },
           `jwt:${token}`,
+          token,
         );
       } else if (role === null) {
         // Not a Supabase anon/authenticated token; unknown JWTs in a bundle
@@ -143,6 +146,7 @@ export const secretLikeString: Rule = {
             helpUri: helpUri(secretLikeString.id),
           },
           `jwt:${token}`,
+          token,
         );
       }
     }
@@ -166,6 +170,7 @@ export const secretLikeString: Rule = {
           helpUri: helpUri(secretLikeString.id),
         },
         `named:${name}:${value}`,
+        value,
       );
     }
 

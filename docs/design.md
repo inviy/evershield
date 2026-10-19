@@ -141,8 +141,11 @@ reported but never fail a build by default.
 
 ## Interfaces
 
-- **CLI**: `evershield scan <dir>` (layer 1), `evershield audit` (layer 2)
-  and `evershield surface` (layer 3), the last two from config. Output: human-readable by default, `--format json`,
+- **CLI**: `evershield scan <dir|app>` (layer 1), `evershield audit` (layer
+  2) and `evershield surface` (layer 3), the last two from config.
+  `evershield recon <dir|app>` presents layer 1 from the attacker's side:
+  what is worth taking, the map any tool reconstructs anyway, and with
+  `--rea` whether REA's own analysis recovers each finding. Output: human-readable by default, `--format json`,
   `--format sarif`. Exit codes: 0 clean, 1 findings above the gate, 2 usage
   or runtime error.
 - **Config**: `evershield.config.json` (or `.ts`), with targets, identities

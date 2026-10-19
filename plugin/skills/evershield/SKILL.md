@@ -44,4 +44,9 @@ Exit codes: 0 clean, 1 blocking findings, 2 usage/runtime error. Fix
 findings at the source. Only a confirmed-safe match goes into `ignore` in
 `evershield.config.json`, and every entry needs a `reason`.
 
+To see the build the way a reverse engineer does, run
+`npx evershield recon <build-dir>` (add `--rea` if REA is installed): it
+fails while anything is worth taking and lists the routes and hosts any
+tool can reconstruct, which are the endpoints that need server-side checks.
+
 No CI yet? `npx evershield init` writes the config and a GitHub workflow.

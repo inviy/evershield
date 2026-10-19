@@ -11,6 +11,8 @@ import { collectFiles, type ScannedFile } from "./files.ts";
 export interface ArtifactScanOptions {
   /** Force an adapter instead of detecting one from the directory. */
   adapter?: Adapter["name"];
+  /** See RuleContext.onMatch. */
+  onMatch?: RuleContext["onMatch"];
 }
 
 export interface ArtifactScanResult extends ScanSummary {
@@ -53,54 +55,59 @@ export function sortFindings(findings: Finding[]): Finding[] {
   });
 }
 
+export interface CollectedTarget {
+  root: string;
+  adapter: Adapter;
+  /** Directory adapter, or the kind of app package. */
+  adapterName: ArtifactScanResult["adapter"];
+  files: ScannedFile[];
+}
+
+/** Read what a target ships: a build directory through its adapter, or an app package in memory. */
+export async function collectTarget(target: string, options: Pick<ArtifactScanOptions, "adapter"> = {}): Promise<CollectedTarget> {
+  const root = path.resolve(target);
+  const info = await stat(root).catch(() => null);
+  if (info === null || (!info.isDirectory() && !info.isFile())) {
+    throw new Error(`not a directory or app package: ${target}`);
+  }
+  if (info.isFile()) {
+    // An app package ships everything inside it; there is nothing for a web adapter to filter.
+    const archive = await collectArchive(root);
+    return { root, adapter: ADAPTERS.plain, adapterName: archive.kind, files: archive.files };
+  }
+  const adapter = options.adapter ? ADAPTERS[options.adapter] : await detectAdapter(root);
+  return { root, adapter, adapterName: adapter.name, files: await collectFiles(root, adapter) };
+}
+
+export function runArtifactRules(files: ScannedFile[], adapter: Adapter, onMatch?: RuleContext["onMatch"]): Finding[] {
+  const context: RuleContext = {
+    adapter,
+    shippedPaths: new Set(files.map((file) => file.relativePath)),
+    ...(onMatch === undefined ? {} : { onMatch }),
+  };
+  const findings: Finding[] = [];
+  for (const file of files) {
+    for (const rule of ARTIFACT_RULES) findings.push(...rule.check(file, context));
+  }
+  return sortFindings(findings);
+}
+
 /** Layer 1: scan a directory of built files, or an app package, for what should not ship. */
 export async function scanArtifact(
   target: string,
   options: ArtifactScanOptions = {},
 ): Promise<ArtifactScanResult> {
   const startedAt = new Date().toISOString();
-  const root = path.resolve(target);
-
-  const info = await stat(root).catch(() => null);
-  if (info === null || (!info.isDirectory() && !info.isFile())) {
-    throw new Error(`not a directory or app package: ${target}`);
-  }
-
-  let adapter: Adapter;
-  let adapterName: ArtifactScanResult["adapter"];
-  let files: ScannedFile[];
-  if (info.isFile()) {
-    // An app package ships everything inside it; there is nothing for a web adapter to filter.
-    const archive = await collectArchive(root);
-    adapter = ADAPTERS.plain;
-    adapterName = archive.kind;
-    files = archive.files;
-  } else {
-    adapter = options.adapter ? ADAPTERS[options.adapter] : await detectAdapter(root);
-    adapterName = adapter.name;
-    files = await collectFiles(root, adapter);
-  }
-  const context: RuleContext = {
-    adapter,
-    shippedPaths: new Set(files.map((file) => file.relativePath)),
-  };
-
-  const findings: Finding[] = [];
-  for (const file of files) {
-    for (const rule of ARTIFACT_RULES) {
-      findings.push(...rule.check(file, context));
-    }
-  }
-
+  const collected = await collectTarget(target, options);
   return {
     version: VERSION,
     layer: "artifact",
-    target: root,
-    adapter: adapterName,
-    filesScanned: files.length,
+    target: collected.root,
+    adapter: collected.adapterName,
+    filesScanned: collected.files.length,
     ignored: 0,
     startedAt,
     finishedAt: new Date().toISOString(),
-    findings: sortFindings(findings),
+    findings: runArtifactRules(collected.files, collected.adapter, options.onMatch),
   };
 }

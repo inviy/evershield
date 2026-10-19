@@ -9,6 +9,14 @@ change rule defaults and output shapes; each such change is listed.
 
 ### Added
 
+- `evershield recon <dir|app>`: the attacker's view of a build or app
+  package. Lists what is worth taking (gated like `scan`) and the map any
+  tool reconstructs anyway (hosts, API paths, source map coverage, public
+  env names). `--rea` / `--rea-bin <path>` runs REA's static analyzer on the
+  same target and checks each finding's value against its output in memory;
+  a requested REA check that cannot run exits 2. Rules can now report the
+  unredacted value through an in-process `onMatch` callback that is never
+  serialized.
 - `evershield scan` takes app packages: Android `.apk`/`.aab`, iOS `.ipa`
   and Electron `.asar`, read in memory with no new dependencies. JS bundles
   are scanned as text; Hermes bytecode (through its string table), DEX,

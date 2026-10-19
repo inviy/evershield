@@ -71,7 +71,7 @@ export const sensitiveEnvName: Rule = {
         const key = `${name}:${value}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        findings.push({
+        const finding: Finding = {
           ruleId: sensitiveEnvName.id,
           layer: "artifact",
           severity: "high",
@@ -80,7 +80,9 @@ export const sensitiveEnvName: Rule = {
           evidence: [{ kind: "file", path: file.relativePath, line, column, excerpt: `${name} = ${redact(value)}` }],
           remediation: "Server-only configuration must not be bundled. Read it on the server and expose only what the client needs.",
           helpUri: helpUri(sensitiveEnvName.id),
-        });
+        };
+        findings.push(finding);
+        context.onMatch?.(finding, value);
         continue;
       }
 
