@@ -1,7 +1,8 @@
 /**
  * artifact/internal-endpoint
  *
- * Addresses that should not be in a public bundle. Private IP ranges and
+ * Addresses that should not be in a public bundle. Private IPs in URLs or
+ * with a port, and
  * `.internal`/`.local`/`.corp` names are rarely legitimate in client code,
  * so confidence is medium–high; severity is medium because they aid an
  * attacker rather than grant access. `localhost` and `staging`/`admin`
@@ -20,13 +21,25 @@ interface EndpointPattern {
   remediation: string;
 }
 
+const OCTET = "(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)";
+const PRIVATE_IP = `(?:10\\.${OCTET}\\.${OCTET}\\.${OCTET}|192\\.168\\.${OCTET}\\.${OCTET}|172\\.(?:1[6-9]|2\\d|3[01])\\.${OCTET}\\.${OCTET})`;
+
 const PATTERNS: EndpointPattern[] = [
   {
+    // In a URL or with a port, a private IP is an address the code talks to.
     name: "Private IP address",
-    pattern: /\b(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b/g,
+    pattern: new RegExp(`(?<=://|@)${PRIVATE_IP}(?![.\\d])|(?<![\\w.])${PRIVATE_IP}(?=:\\d{2,5}\\b)`, "g"),
     severity: "medium",
     confidence: "medium",
     remediation: "Replace with a public hostname resolved server-side, or remove the reference.",
+  },
+  {
+    // A bare one is as often an example, a doc comment or a CIDR in a language grammar.
+    name: "Private IP literal",
+    pattern: new RegExp(`(?<![\\w.:@/])${PRIVATE_IP}(?![.\\d:])`, "g"),
+    severity: "low",
+    confidence: "low",
+    remediation: "If the client connects to this address, route it through a public endpoint instead.",
   },
   {
     name: "Internal hostname",

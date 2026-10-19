@@ -44,6 +44,8 @@ function isPublicName(name: string, context: RuleContext): boolean {
 export function looksLikeSecretValue(value: string): boolean {
   if (value.length < 12) return false;
   if (/^[A-Z0-9_]+$/.test(value)) return false;
+  // Protocol identifiers and URLs (urn:ietf:params:oauth:grant-type:…), and anything with spaces, are constants or prose.
+  if (/^(?:urn|https?|wss?|mailto|data):/i.test(value) || /\s/.test(value)) return false;
   const classes = [/[a-z]/, /[A-Z]/, /[0-9]/].filter((re) => re.test(value)).length;
   return classes >= 2;
 }

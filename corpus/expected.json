@@ -1,0 +1,311 @@
+{
+  "preact@11.0.1": [
+    {
+      "ruleId": "artifact/sensitive-env-name",
+      "path": "debug/dist/debug.mjs",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint: React-compatible internal prop name (SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED), not an environment variable."
+    },
+    {
+      "ruleId": "artifact/sensitive-env-name",
+      "path": "debug/src/check-props.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint: React-compatible internal prop name (SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED), not an environment variable."
+    }
+  ],
+  "svelte@5.57.2": [
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "src/compiler/phases/1-parse/utils/entities.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: W3C spec URL (https://dev.w3.org) in the HTML entity table."
+    }
+  ],
+  "moment@2.31.0": [
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "dist/locale/de-ch.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Swiss government URL (https://www.bk.admin.ch) cited in the de-ch locale."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "src/locale/de-ch.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Swiss government URL (https://www.bk.admin.ch) cited in the de-ch locale."
+    }
+  ],
+  "axios@1.20.0": [
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "dist/axios.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Library default/documentation (http://localhost base for relative URLs; NO_PROXY example in a comment)."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "dist/axios.min.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Library default/documentation (http://localhost base for relative URLs; NO_PROXY example in a comment)."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "dist/browser/axios.cjs",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Library default/documentation (http://localhost base for relative URLs; NO_PROXY example in a comment)."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "dist/esm/axios.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Library default/documentation (http://localhost base for relative URLs; NO_PROXY example in a comment)."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "dist/esm/axios.min.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Library default/documentation (http://localhost base for relative URLs; NO_PROXY example in a comment)."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "dist/node/axios.cjs",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Library default/documentation (http://localhost base for relative URLs; NO_PROXY example in a comment)."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "lib/adapters/http.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Library default/documentation (http://localhost base for relative URLs; NO_PROXY example in a comment)."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "lib/helpers/shouldBypassProxy.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Library default/documentation (http://localhost base for relative URLs; NO_PROXY example in a comment)."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "lib/platform/common/utils.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Library default/documentation (http://localhost base for relative URLs; NO_PROXY example in a comment)."
+    }
+  ],
+  "mapbox-gl@3.33.0": [
+    {
+      "ruleId": "artifact/source-map-published",
+      "path": "dist/mapbox-gl-dev.js",
+      "severity": "high",
+      "confidence": "high",
+      "reason": "True positive: the development build embeds its full source map. Shipping this file would publish the source; production apps use mapbox-gl.js."
+    }
+  ],
+  "@supabase/supabase-js@2.118.0": [
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "dist/umd/supabase.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: supabase-js GoTrue default URL (http://localhost:9999), replaced by the project URL at runtime."
+    }
+  ],
+  "firebase@13.0.0": [
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "firebase-auth-compat.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Firebase Auth emulator default (http://localhost), only used when the emulator is configured."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "firebase-auth-cordova.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Firebase Auth emulator default (http://localhost), only used when the emulator is configured."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "firebase-auth-web-extension.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Firebase Auth emulator default (http://localhost), only used when the emulator is configured."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "firebase-auth.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Firebase Auth emulator default (http://localhost), only used when the emulator is configured."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "firebase-compat.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Firebase Auth emulator default (http://localhost), only used when the emulator is configured."
+    }
+  ],
+  "@sentry/browser@11.8.0": [
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "build/npm/cjs/dev/integrations/spotlight.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Sentry Spotlight sidecar default (http://localhost:8969), a development integration."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "build/npm/cjs/prod/integrations/spotlight.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Sentry Spotlight sidecar default (http://localhost:8969), a development integration."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "build/npm/esm/dev/integrations/spotlight.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Sentry Spotlight sidecar default (http://localhost:8969), a development integration."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "build/npm/esm/prod/integrations/spotlight.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Sentry Spotlight sidecar default (http://localhost:8969), a development integration."
+    }
+  ],
+  "highlight.js@11.12.0": [
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "es/languages/routeros.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Example CIDR in the RouterOS language grammar."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "lib/languages/routeros.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Example CIDR in the RouterOS language grammar."
+    }
+  ],
+  "katex@0.19.0": [
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "contrib/auto-render/index.html",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Demo HTML pages in contrib/ pointing at the local dev server."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "contrib/copy-tex/index.html",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Demo HTML pages in contrib/ pointing at the local dev server."
+    }
+  ],
+  "@apollo/client@4.3.4": [
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "__cjs/core/ApolloClient.cjs",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "__cjs/link/batch-http/BaseBatchHttpLink.cjs",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "__cjs/link/batch-http/batchHttpLink.cjs",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "__cjs/link/core/ApolloLink.cjs",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "__cjs/link/http/BaseHttpLink.cjs",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "__cjs/link/http/HttpLink.cjs",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "core/ApolloClient.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "link/batch-http/BaseBatchHttpLink.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "link/batch-http/batchHttpLink.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "link/core/ApolloLink.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "link/http/BaseHttpLink.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    },
+    {
+      "ruleId": "artifact/internal-endpoint",
+      "path": "link/http/HttpLink.js",
+      "severity": "low",
+      "confidence": "low",
+      "reason": "Low/low hint, benign in library code: Apollo Client dev-tools hint (http://localhost:4000) in an error/help string."
+    }
+  ]
+}

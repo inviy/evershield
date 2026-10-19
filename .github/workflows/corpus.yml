@@ -1,0 +1,40 @@
+name: Corpus
+
+# False-positive regression corpus: scans pinned real-world browser code and
+# default framework builds, and fails when a rule's behaviour on it changes.
+# See docs/corpus.md for the latest numbers.
+
+on:
+  pull_request:
+    paths: ["src/rules/**", "src/scan/**", "corpus/**", "scripts/corpus.ts"]
+  push:
+    branches: [main]
+    paths: ["src/rules/**", "src/scan/**", "corpus/**", "scripts/corpus.ts"]
+  schedule:
+    - cron: "17 3 * * 1"   # weekly: catches generator output drifting under pinned generators
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: .corpus-cache
+          key: corpus-${{ hashFiles('corpus/packages.json', 'corpus/apps.json') }}-${{ github.event_name == 'schedule' && github.run_id || 'pinned' }}
+      - name: Scan the corpus
+        run: node --experimental-strip-types scripts/corpus.ts --apps --report corpus-report.md
+      - name: Report
+        if: always()
+        run: cat corpus-report.md >> "$GITHUB_STEP_SUMMARY" || true

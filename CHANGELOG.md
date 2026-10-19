@@ -7,8 +7,23 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+### Added
+
+- False-positive regression corpus (`pnpm corpus`, `docs/corpus.md`): 42
+  pinned browser packages and 9 default framework builds, checked in CI on
+  rule changes and weekly. Every accepted finding carries a reason.
+
 ### Fixed
 
+- `artifact/secret-like-string`: a private key block needs a base64 body;
+  PEM-parsing code that only names the header (auth0-spa-js) is no longer
+  a critical finding. Dotted identifiers such as `auth0.lock.getTokenSilently`
+  are no longer high-entropy credentials.
+- `artifact/sensitive-env-name`: URN, URL and prose values (an OAuth
+  grant-type URN in auth0-spa-js) no longer count as secret-shaped.
+- `artifact/internal-endpoint`: private IPs count at medium only in a URL or
+  with a port; bare literals in comments and grammars are low/low, and DOIs
+  and out-of-range octets no longer match.
 - The release workflow installs Chromium before `pnpm check`; without it the
   layer 3 browser test fails in CI by design, which failed the v0.2.0 run
   (0.2.0 itself was published by hand and is unaffected).

@@ -195,6 +195,17 @@ evershield refuses a config whose ignores have no `reason`, and reports how
 many findings the config removed. Details in
 [docs/configuration.md](docs/configuration.md).
 
+## Measured on real code
+
+Every rule change runs against a [false-positive corpus](docs/corpus.md): 42
+pinned npm packages that ship to browsers (React, Vue, Firebase, Supabase,
+Auth0, Sentry, Stripe.js, PostHog, three.js, pdf.js and more) plus 9 default
+apps from Next.js, Vite, SvelteKit and Astro generators, built as deployed.
+**False positives at the default gate: 0** across 8,883 files and 172 MiB.
+The one blocking finding is a true positive (a development build with an
+inline source map). The first run found 8 false positives, all in
+auth0-spa-js; fixing them is how the rules got here.
+
 ## Principles
 
 - **Defensive only.** It audits targets you own, listed in your config.

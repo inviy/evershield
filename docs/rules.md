@@ -15,6 +15,10 @@ Credentials in shipped files.
 | Match | Severity | Confidence | Why |
 |---|---|---|---|
 | AWS access key ID, GitHub token, Stripe live secret key, Slack token, Anthropic key, OpenAI key, private key block | critical | high | Provider formats are structurally unambiguous and grant server-side access |
+
+A private key block needs a base64 body after its `-----BEGIN … PRIVATE
+KEY-----` header. The header alone is how PEM-parsing code checks its
+input (auth0-spa-js bundles such a check) and is not a finding.
 | Supabase JWT with `role: service_role` | critical | high | Bypasses row-level security entirely |
 | Stripe test secret key | medium | high | Not live, still should not ship |
 | Google API key (`AIza…`) | medium | medium | Browser keys are expected; the risk is a missing origin restriction |
@@ -65,13 +69,14 @@ Addresses that map your infrastructure.
 
 | Match | Severity | Confidence |
 |---|---|---|
-| Private IP (`10/8`, `172.16/12`, `192.168/16`) | medium | medium |
+| Private IP (`10/8`, `172.16/12`, `192.168/16`) in a URL or with a port | medium | medium |
+| Bare private IP literal (comments, examples, grammars) | low | low |
 | `.internal` / `.local` / `.corp` / `.lan` / `.intranet` host | medium | high |
 | `localhost` / `127.0.0.1` URL | low | low |
 | `staging.` / `dev.` / `admin.` / `preprod.` / `uat.` host | low | low |
 
-Version strings (`v10.0.0.1`) do not match: the IP pattern requires a word
-boundary before the first octet. Library defaults do match: supabase-js
+Version strings (`v10.0.0.1`), DOIs (`10.1.1.7.6968`) and out-of-range
+octets do not match: an IP must stand alone and every octet must be ≤ 255. Library defaults do match: supabase-js
 ships `http://localhost:9999` as its fallback auth URL, which is why that
 match is low/low and never blocks.
 

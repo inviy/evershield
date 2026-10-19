@@ -1,0 +1,14 @@
+{
+  "$comment": "Pinned npm packages whose code ships to browsers. scripts/corpus.ts scans every .js/.mjs/.cjs/.css/.html file in each tarball (not .map or .d.ts) and compares the findings with corpus/expected.json. Bump versions deliberately and review the diff.",
+  "packages": [
+    "react-dom@19.3.1", "react@19.3.1", "vue@3.5.44", "preact@11.0.1", "svelte@5.57.2",
+    "jquery@4.0.0", "lodash@4.18.1", "moment@2.31.0", "dayjs@1.11.23", "axios@1.20.0",
+    "chart.js@4.5.1", "d3@7.9.0", "three@0.186.1", "leaflet@1.9.4", "mapbox-gl@3.33.0",
+    "maplibre-gl@6.15.0", "@supabase/supabase-js@2.118.0", "firebase@13.0.0", "@stripe/stripe-js@10.1.0",
+    "@sentry/browser@11.8.0", "bootstrap@5.3.8", "pdfjs-dist@6.4.299", "socket.io-client@4.8.4",
+    "highlight.js@11.12.0", "marked@18.1.1", "katex@0.19.0", "quill@2.0.3", "video.js@10.1.0",
+    "swiper@14.3.0", "gsap@3.15.0", "rxjs@7.8.2", "@apollo/client@4.3.4", "@auth0/auth0-spa-js@2.28.4",
+    "posthog-js@1.438.12", "mixpanel-browser@2.84.0", "echarts@6.1.0", "plotly.js-dist-min@4.1.2",
+    "alpinejs@3.17.4", "htmx.org@2.0.11", "@hotwired/turbo@8.0.23", "dompurify@3.4.17", "sortablejs@1.15.7"
+  ]
+}

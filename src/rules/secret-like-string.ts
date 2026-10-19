@@ -36,7 +36,8 @@ const PROVIDERS: ProviderPattern[] = [
   { name: "Slack token", pattern: /\bxox[baprs]-[0-9A-Za-z-]{10,}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
   { name: "Anthropic API key", pattern: /\bsk-ant-[A-Za-z0-9_-]{32,}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
   { name: "OpenAI API key", pattern: /\bsk-(?!ant-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{32,}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
-  { name: "Private key block", pattern: /-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY(?: BLOCK)?-----/g, severity: "critical", confidence: "high", remediation: "Remove the key from the build and rotate it." },
+  // The header alone is how PEM-parsing code (jose, auth0-spa-js) checks its input; a real key has a base64 body.
+  { name: "Private key block", pattern: /-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY(?: BLOCK)?-----(?:\\[rn]|\s)*[A-Za-z0-9+/=]{64,}/g, severity: "critical", confidence: "high", remediation: "Remove the key from the build and rotate it." },
   {
     name: "Google API key",
     pattern: /\bAIza[0-9A-Za-z_-]{35}\b/g,
@@ -66,7 +67,9 @@ function isPublicName(name: string, context: RuleContext): boolean {
  */
 function looksLikeCredentialValue(value: string): boolean {
   if (value.startsWith("--") || value.startsWith("./") || value.startsWith("/")) return false;
-  if (/^[a-z0-9]+(?:[.\-_/][a-z0-9]+)+$/i.test(value) && !/[0-9]/.test(value)) return false;
+  // Dotted or dashed identifiers made of words ("auth0.lock.getTokenSilently", "spacing.large.default")
+  // are keys and paths. Each segment is letters with at most trailing digits; tokens mix digits inside.
+  if (/^[A-Za-z]+\d*(?:[.\-_/:][A-Za-z]+\d*)+$/.test(value)) return false;
   const classes = [/[a-z]/, /[A-Z]/, /[0-9]/].filter((re) => re.test(value)).length;
   return classes >= 2 && shannonEntropy(value) >= MIN_NAMED_ENTROPY;
 }

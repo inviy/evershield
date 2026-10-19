@@ -24,7 +24,7 @@ export const fake = {
   stripeLiveKey: () => ["sk", "live", "S".repeat(28)].join("_"),
   stripePublishableKey: () => ["pk", "live", "P".repeat(28)].join("_"),
   googleKey: () => `AIza${"G".repeat(35)}`,
-  privateKeyBlock: () => ["-----BEGIN ", "PRIVATE KEY-----\nMIIE...\n-----END ", "PRIVATE KEY-----"].join(""),
+  privateKeyBlock: () => ["-----BEGIN ", "PRIVATE KEY-----\\n", "MIIEv", "Q".repeat(64), "\\n-----END ", "PRIVATE KEY-----"].join(""),
   jwt: (payload: Record<string, unknown>) => {
     const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
     return `${encode({ alg: "HS256", typ: "JWT" })}.${encode(payload)}.${"s".repeat(43)}`;

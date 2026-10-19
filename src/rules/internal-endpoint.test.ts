@@ -31,3 +31,15 @@ test("version strings and public hosts are not findings", () => {
     assert.equal(check(text).length, 0, text);
   }
 });
+
+test("bare private IPs are low/low; DOIs and longer dotted numbers are not IPs", () => {
+  // three.js cites a DOI; axios documents NO_PROXY in a comment; highlight.js has a RouterOS grammar.
+  assert.deepEqual(check(`// https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.7.6968&rep=rep1`), []);
+  const bare = check("// `NO_PROXY=192.168.1.5` would not match");
+  assert.equal(bare.length, 1);
+  assert.equal(bare[0]!.severity, "low");
+  assert.equal(bare[0]!.confidence, "low");
+  assert.deepEqual(check(`const v = "10.300.1.1";`), []);
+  const port = check(`connect("192.168.0.12:5432")`);
+  assert.equal(port[0]?.severity, "medium");
+});

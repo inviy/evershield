@@ -85,3 +85,17 @@ test("the same secret in one file is reported once", () => {
   const findings = check(`"${secret}" "${secret}" "${secret}"`);
   assert.equal(findings.length, 1);
 });
+
+test("PEM-parsing code that names the header without a key body is not a finding", () => {
+  // From @auth0/auth0-spa-js 2.28.4 (bundled jose).
+  const header = ["-----BEGIN", " PRIVATE KEY-----"].join("");
+  const code = `if("string"!=typeof e||0!==e.indexOf("${header}"))throw new TypeError('"pkcs8" must be PKCS#8 formatted string');`;
+  assert.deepEqual(check(code), []);
+  assert.deepEqual(check(`e.replace(/(?:-----(?:BEGIN|END) PRIVATE KEY-----|\\s)/g,"")`), []);
+});
+
+test("dotted identifiers are storage keys, not credentials", () => {
+  // From @auth0/auth0-spa-js 2.28.4.
+  assert.deepEqual(check(`const GET_TOKEN_SILENTLY_LOCK_KEY = 'auth0.lock.getTokenSilently';`), []);
+  assert.equal(check(`const apiKey = "Zq8vN2pL.5tR9wX3yB7cD1fG4hJ6kM0nPaE";`).length, 1);
+});
