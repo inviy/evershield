@@ -9,6 +9,8 @@ change rule defaults and output shapes; each such change is listed.
 
 ### Added
 
+- `experiments/rea`: reproducible check of what REA recovers from a leaky
+  app and from the same app fixed with evershield.
 - False-positive regression corpus (`pnpm corpus`, `docs/corpus.md`): 42
   pinned browser packages and 9 default framework builds, checked in CI on
   rule changes and weekly. Every accepted finding carries a reason.
@@ -24,6 +26,8 @@ change rule defaults and output shapes; each such change is listed.
 - `artifact/internal-endpoint`: private IPs count at medium only in a URL or
   with a port; bare literals in comments and grammars are low/low, and DOIs
   and out-of-range octets no longer match.
+- `surface/obscured-content`: a label next to a mask ("Burstiness score
+  ●●●●") is a placeholder, the fix the rule recommends, not a finding.
 - The release workflow installs Chromium before `pnpm check`; without it the
   layer 3 browser test fails in CI by design, which failed the v0.2.0 run
   (0.2.0 itself was published by hand and is unaffected).

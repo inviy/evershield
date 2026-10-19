@@ -87,7 +87,7 @@ test("obscured-content: blurred real text in a lower tier fires once per page; p
   const findings = obscuredContent.check(
     observe(
       { path: "/report" },
-      snap("free", [hidden("p:nth-of-type(1)", "Perplexity 41.2", "blur"), hidden("p:nth-of-type(2)", "Burstiness 0.82", "transparent-text"), hidden("p:nth-of-type(3)", "●●●●", "blur"), hidden("p:nth-of-type(4)", "Lorem ipsum dolor", "blur")]),
+      snap("free", [hidden("p:nth-of-type(1)", "Perplexity 41.2", "blur"), hidden("p:nth-of-type(2)", "Burstiness 0.82", "transparent-text"), hidden("p:nth-of-type(3)", "●●●●", "blur"), hidden("p:nth-of-type(4)", "Lorem ipsum dolor", "blur"), hidden("p:nth-of-type(5)", "Burstiness score ●●●●", "blur"), hidden("p:nth-of-type(6)", "Perplexity XXXX", "blur")]),
       snap("pro", [visible("p", "Perplexity 41.2")]),
     ),
   );

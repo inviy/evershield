@@ -1,0 +1,120 @@
+{
+  "rea": "rea-agents 6.5.0",
+  "leaks": [
+    {
+      "id": "secret",
+      "what": "Stripe secret key in the bundle"
+    },
+    {
+      "id": "internal",
+      "what": "Internal API address in the bundle"
+    },
+    {
+      "id": "source",
+      "what": "Original source via a published source map (comments, file layout)"
+    },
+    {
+      "id": "paid-dom",
+      "what": "Pro metric in the free user's page, hidden by blur"
+    },
+    {
+      "id": "paid-api",
+      "what": "Pro fields in the free user's API response"
+    }
+  ],
+  "leaky": {
+    "recovered": {
+      "secret": [
+        "rea inspect",
+        "rea bundle",
+        "rea static"
+      ],
+      "internal": [
+        "rea inspect",
+        "rea bundle",
+        "rea static"
+      ],
+      "source": [
+        "rea bundle"
+      ],
+      "paid-dom": [
+        "rea inspect"
+      ],
+      "paid-api": [
+        "free user's response"
+      ]
+    },
+    "findings": [
+      {
+        "ruleId": "artifact/secret-like-string",
+        "severity": "critical",
+        "confidence": "high",
+        "message": "Stripe secret key shipped in assets/index-WBqzkHLL.js"
+      },
+      {
+        "ruleId": "artifact/secret-like-string",
+        "severity": "critical",
+        "confidence": "high",
+        "message": "Stripe secret key shipped in assets/index-WBqzkHLL.js.map"
+      },
+      {
+        "ruleId": "artifact/source-map-published",
+        "severity": "high",
+        "confidence": "high",
+        "message": "Source map shipped: assets/index-WBqzkHLL.js.map"
+      },
+      {
+        "ruleId": "artifact/internal-endpoint",
+        "severity": "medium",
+        "confidence": "medium",
+        "message": "Private IP address in assets/index-WBqzkHLL.js: 10.0.3.7"
+      },
+      {
+        "ruleId": "artifact/internal-endpoint",
+        "severity": "medium",
+        "confidence": "medium",
+        "message": "Private IP address in assets/index-WBqzkHLL.js.map: 10.0.3.7"
+      },
+      {
+        "ruleId": "response/expected-absent-field-present",
+        "severity": "high",
+        "confidence": "high",
+        "message": "GET /api/report returns \"burstiness\" to free, which the config says must not receive it"
+      },
+      {
+        "ruleId": "response/expected-absent-field-present",
+        "severity": "high",
+        "confidence": "high",
+        "message": "GET /api/report returns \"perplexity\" to free, which the config says must not receive it"
+      },
+      {
+        "ruleId": "surface/hidden-higher-tier-content",
+        "severity": "high",
+        "confidence": "high",
+        "message": "/: \"Burstiness score 0.82 (human-like)\" is visible to pro and present but hidden for free (text hidden by blur)"
+      },
+      {
+        "ruleId": "surface/hidden-higher-tier-content",
+        "severity": "high",
+        "confidence": "high",
+        "message": "/: \"Perplexity 41.2\" is visible to pro and present but hidden for free (text hidden by blur)"
+      },
+      {
+        "ruleId": "surface/obscured-content",
+        "severity": "high",
+        "confidence": "medium",
+        "message": "/ shows free 2 blurred or transparent text element(s); the text is readable in the DOM"
+      }
+    ]
+  },
+  "fixed": {
+    "recovered": {
+      "secret": [],
+      "internal": [],
+      "source": [],
+      "paid-dom": [],
+      "paid-api": []
+    },
+    "findings": []
+  }
+}

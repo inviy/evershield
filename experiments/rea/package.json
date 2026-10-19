@@ -1,0 +1,10 @@
+{
+  "name": "evershield-rea-experiment",
+  "private": true,
+  "type": "module",
+  "description": "Reproducible check: what REA recovers from a leaky app and from the same app fixed with evershield. See README.md.",
+  "devDependencies": {
+    "vite": "7.1.12",
+    "rea-agents": "6.5.0"
+  }
+}

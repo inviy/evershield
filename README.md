@@ -206,6 +206,17 @@ The one blocking finding is a true positive (a development build with an
 inline source map). The first run found 8 false positives, all in
 auth0-spa-js; fixing them is how the rules got here.
 
+## Tested against REA
+
+[experiments/rea](experiments/rea/README.md) points
+[REA](https://github.com/morluto/rea) at a deliberately leaky app and at the
+same app fixed with evershield. REA recovered all five leaks from the leaky
+build (a secret key, an internal address, source via source maps, blurred
+Pro data in the DOM, Pro fields in a free response); evershield flagged all
+five; after the fix REA recovered none and evershield reported nothing.
+evershield does not hide your app from REA. It makes sure there is nothing
+in it worth taking.
+
 ## Principles
 
 - **Defensive only.** It audits targets you own, listed in your config.

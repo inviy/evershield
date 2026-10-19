@@ -148,8 +148,12 @@ export const hiddenHigherTierContent: SurfaceRule = {
   },
 };
 
-/** Text that is obviously a decoy: masks, lorem ipsum, a single repeated character. */
-const PLACEHOLDER = /^(?:[\sxX*•●▒█#?·._,\-–—0]+|lorem ipsum.*|(.)\1+)$/i;
+/**
+ * Text that is obviously a decoy: masks, lorem ipsum, a single repeated
+ * character, or a label next to a mask ("Burstiness score ●●●●"), which is
+ * the fix this rule recommends.
+ */
+const PLACEHOLDER = /^(?:[\sxX*•●▒█#?·._,\-–—0]+|lorem ipsum.*|(.)\1+)$|[•●▒█*#]{3,}|\b[xX]{4,}\b/i;
 
 export const obscuredContent: SurfaceRule = {
   id: "surface/obscured-content",
