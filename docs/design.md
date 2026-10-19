@@ -153,8 +153,10 @@ reported but never fail a build by default.
   overrides and allowlists with a required `reason` field.
 - **GitHub Action**: thin wrapper that runs the CLI and uploads SARIF to
   code scanning.
-- **Agent surface**: an MCP server and an agent skill so coding agents run
-  the scan while they write the code, not after.
+- **Agent surface**: `evershield mcp`, an MCP server over stdio (no
+  dependencies) whose tools wrap the CLI's JSON output, and a Claude Code
+  plugin with an agent skill, so coding agents run the scan while they
+  write the code, not after.
 
 ## Non-goals
 

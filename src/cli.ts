@@ -40,6 +40,8 @@ Usage:
   evershield surface [options]      Layer 3: open configured pages as each identity in a
                                     headless browser and find content that is present but
                                     hidden (needs config "surface" and Playwright)
+  evershield mcp                    Run as an MCP server over stdio for coding agents
+                                    (tools: scan, recon, audit, surface, explain_rule)
   evershield --version              Print version
   evershield --help                 Show this help
 

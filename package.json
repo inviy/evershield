@@ -40,6 +40,7 @@
   },
   "files": [
     "dist",
+    "docs/rules.md",
     "README.md",
     "LICENSE"
   ],
