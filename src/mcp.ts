@@ -107,7 +107,7 @@ async function cliTool(argv: string[]): Promise<ToolResult> {
 
 /** The rule's section of docs/rules.md, shipped in the package. */
 export async function explainRule(ruleId: string, docsPath = path.resolve(import.meta.dirname, "../docs/rules.md")): Promise<string | undefined> {
-  const doc = await readFile(docsPath, "utf8");
+  const doc = (await readFile(docsPath, "utf8")).replace(/\r\n/g, "\n"); // CRLF checkouts on Windows
   const start = doc.indexOf(`### ${ruleId}\n`);
   if (start < 0) return undefined;
   const next = doc.slice(start + 4).search(/\n#{2,3} /);

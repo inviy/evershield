@@ -61,6 +61,9 @@ test("evershield_recon and evershield_explain_rule", async () => {
   const text = await explainRule("surface/obscured-content", docs);
   assert.match(text ?? "", /^### surface\/obscured-content/);
   assert.ok(!(text ?? "").includes("### surface/expected"), "stops at the next rule");
+  await withTempDir({ "rules.md": "## Surface\r\n\r\n### surface/a\r\n\r\nBody.\r\n\r\n### surface/b\r\n" }, async (root) => {
+    assert.equal(await explainRule("surface/a", path.join(root, "rules.md")), "### surface/a\n\nBody.", "CRLF checkouts (Windows)");
+  });
   const unknown = await call("evershield_explain_rule", { ruleId: "artifact/nope" });
   assert.equal(unknown.result.isError, true);
 });
