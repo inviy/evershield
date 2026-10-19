@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "evershield": {
+      "command": "npx",
+      "args": ["-y", "evershield@latest", "mcp"]
+    }
+  }
+}

@@ -9,6 +9,13 @@ change rule defaults and output shapes; each such change is listed.
 
 ### Added
 
+- `evershield mcp`: a Model Context Protocol server over stdio for coding
+  agents (Claude Code, Cursor, Codex, …), with no new dependencies. Tools
+  `evershield_scan`, `evershield_recon`, `evershield_audit`,
+  `evershield_surface` and `evershield_explain_rule` return the CLI's JSON
+  report; findings at the gate are a verdict, not a tool error. Verified
+  with the official MCP Inspector. The Claude Code plugin registers it, and
+  `docs/rules.md` now ships in the package for `explain_rule`.
 - Documentation site built from the repository's Markdown (`pnpm site`,
   `scripts/site.ts`) and published to GitHub Pages: overview, every rule on
   a page of its own, configuration, the false-positive corpus, the REA
