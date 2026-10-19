@@ -48,18 +48,14 @@ jobs:
       - name: Skip if this version is already on npm
         id: published
         run: |
-          # A version published by hand just before the tag can take a few
-          # minutes to appear in the registry ("being processed"); look
-          # again for up to three minutes before deciding to publish.
+          # Re-running the workflow for a version that was already approved
+          # must not stage it again. Releases are never published by hand
+          # any more, so a single check is enough.
           version="$(node -p "require('./package.json').version")"
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            if npm view "evershield@$version" version >/dev/null 2>&1; then
-              echo "::notice::evershield@$version is already published; skipping publish"
-              echo "exists=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            [ "$attempt" = 10 ] || sleep 20
-          done
+          if npm view "evershield@$version" version >/dev/null 2>&1; then
+            echo "::notice::evershield@$version is already published; skipping"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Stage for approval
         if: steps.published.outputs.exists != 'true'
         run: |

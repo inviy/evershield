@@ -7,6 +7,12 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+### Changed
+
+- The release workflow no longer waits three minutes for a hand-published
+  version to appear: releases are only staged by the workflow and approved
+  on npm, so one "already published?" check is enough.
+
 ## [0.3.2] - 2026-10-19
 
 First release through staged publishing. Same code as 0.3.1.
