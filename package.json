@@ -1,6 +1,6 @@
 {
   "name": "evershield",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Shield everything, everywhere: find what your web app exposes to the browser, in bundles, API responses and the rendered page",
   "license": "MIT",
   "author": "Lee Dongwook (@inviy)",
