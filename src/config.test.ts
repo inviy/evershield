@@ -108,6 +108,11 @@ test("loadConfig: default file is optional, explicit file is not, invalid JSON i
     assert.ok(bad instanceof ConfigError);
     assert.match((bad as Error).message, /invalid JSON/);
   });
+  // PowerShell 5's Set-Content -Encoding utf8 and Notepad write a byte order mark.
+  await withTempDir({ "bom.json": `\uFEFF${JSON.stringify({ ignore: [{ ruleId: "*", reason: "test" }] })}` }, async (root) => {
+    const { config } = await loadConfig(`${root}/bom.json`);
+    assert.equal(config.ignore.length, 1);
+  });
   await withTempDir({ "ok.json": JSON.stringify({ ignore: [{ ruleId: "*", reason: "test" }] }) }, async (root) => {
     const { config, source } = await loadConfig(`${root}/ok.json`);
     assert.equal(config.ignore.length, 1);

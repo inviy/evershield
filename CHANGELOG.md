@@ -7,6 +7,11 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+### Fixed
+
+- Config and `storageState` files saved with a UTF-8 byte order mark (Notepad,
+  PowerShell 5's `Set-Content -Encoding utf8`) no longer fail as invalid JSON.
+
 ## [0.4.0] - 2026-10-19
 
 ### Added

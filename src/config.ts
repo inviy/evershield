@@ -278,6 +278,11 @@ function parseSurfaceConfig(raw: unknown, where: string): SurfaceConfig {
   return surface;
 }
 
+/** JSON.parse that tolerates the byte order mark Windows editors and PowerShell 5 write. */
+export function parseJsonFile(text: string): unknown {
+  return JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+}
+
 /**
  * Load the config file. An explicit path must exist; the default file is
  * optional. Returns the source path alongside, for messages.
@@ -294,7 +299,7 @@ export async function loadConfig(explicitPath?: string): Promise<{ config: Confi
   }
   let raw: unknown;
   try {
-    raw = JSON.parse(text);
+    raw = parseJsonFile(text);
   } catch (error) {
     throw new ConfigError(`${filePath}: invalid JSON (${error instanceof Error ? error.message : String(error)})`);
   }

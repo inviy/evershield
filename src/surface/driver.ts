@@ -10,7 +10,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { interpolateEnv } from "../audit/http.ts";
-import { ConfigError } from "../config.ts";
+import { ConfigError, parseJsonFile } from "../config.ts";
 import { type CollectArgs, collectSurface, type CollectedSurface } from "./collect.ts";
 import type { SurfaceIdentityConfig, SurfaceSnapshot } from "./types.ts";
 
@@ -92,7 +92,7 @@ function emptySnapshot(request: CaptureRequest, error: string): SurfaceSnapshot 
 async function readStorageState(file: string, env: NodeJS.ProcessEnv): Promise<unknown> {
   const resolved = path.resolve(interpolateEnv(file, env));
   try {
-    return JSON.parse(await readFile(resolved, "utf8"));
+    return parseJsonFile(await readFile(resolved, "utf8"));
   } catch (error) {
     throw new ConfigError(`cannot read storageState ${resolved}: ${error instanceof Error ? error.message : String(error)}`);
   }
