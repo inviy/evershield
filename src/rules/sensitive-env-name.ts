@@ -10,7 +10,11 @@
  * - Name with an adjacent literal that is shaped like a secret (12+ chars,
  *   mixed character classes, not an UPPER_CASE identifier): high severity,
  *   medium confidence. The shape check exists because `PASSWORD_RECOVERY:
- *   "recovery"` is an auth event enum, not a leak.
+ *   "recovery"` is an auth event enum, not a leak; likewise a value that
+ *   spells the name in camelCase (`RESET_PASSWORD: "resetPassword"`,
+ *   `PREVIEW_SIGNING_KEY = "previewModeSigningKey"`) is a property key. In
+ *   example, fixture, test and docs paths the value is usually sample data,
+ *   so confidence drops to low there.
  * - Bare name: low on both, and only for the strongest keywords. `PASSWORD`,
  *   `ACCESS_TOKEN` and `REFRESH_TOKEN` are everyday vocabulary in client auth
  *   code, so on their own they are not reported at all.
@@ -46,9 +50,23 @@ export function looksLikeSecretValue(value: string): boolean {
   if (/^[A-Z0-9_]+$/.test(value)) return false;
   // Protocol identifiers and URLs (urn:ietf:params:oauth:grant-type:…), and anything with spaces, are constants or prose.
   if (/^(?:urn|https?|wss?|mailto|data):/i.test(value) || /\s/.test(value)) return false;
+  // API paths (`/v1/accounts:resetPassword`) name an endpoint.
+  if (/^\/[a-z][\w-]*\//i.test(value)) return false;
   const classes = [/[a-z]/, /[A-Z]/, /[0-9]/].filter((re) => re.test(value)).length;
   return classes >= 2;
 }
+
+/** A value whose words are mostly the name's own, in another case: an identifier, not a secret. */
+export function spellsName(name: string, value: string): boolean {
+  if (/\d/.test(value)) return false;
+  const nameWords = new Set(name.toLowerCase().split("_"));
+  const valueWords = value.split(/[-_.]|(?=[A-Z])/).map((word) => word.toLowerCase()).filter(Boolean);
+  const shared = valueWords.filter((word) => nameWords.has(word)).length;
+  return valueWords.length > 0 && shared * 2 >= valueWords.length;
+}
+
+/** Paths that hold sample data rather than code that runs. */
+const SAMPLE_PATH = /(?:^|[/.])(?:examples?|fixtures?|__fixtures__|tests?|__tests__|spec|docs?)(?:[/.]|$)/i;
 
 export const sensitiveEnvName: Rule = {
   id: "artifact/sensitive-env-name",
@@ -67,7 +85,7 @@ export const sensitiveEnvName: Rule = {
       if (findings.length >= MAX_FINDINGS_PER_FILE) break;
       const { line, column } = lineColumn(file.text, match.index);
 
-      if (value !== undefined && looksLikeSecretValue(value)) {
+      if (value !== undefined && looksLikeSecretValue(value) && !spellsName(name, value)) {
         const key = `${name}:${value}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -75,7 +93,7 @@ export const sensitiveEnvName: Rule = {
           ruleId: sensitiveEnvName.id,
           layer: "artifact",
           severity: "high",
-          confidence: "medium",
+          confidence: SAMPLE_PATH.test(file.relativePath) ? "low" : "medium",
           message: `${name} is assigned a literal value in ${file.relativePath}`,
           evidence: [{ kind: "file", path: file.relativePath, line, column, excerpt: `${name} = ${redact(value)}` }],
           remediation: "Server-only configuration must not be bundled. Read it on the server and expose only what the client needs.",

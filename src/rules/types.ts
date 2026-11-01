@@ -12,6 +12,12 @@ export interface RuleContext {
    * stored on the finding or written anywhere.
    */
   onMatch?: (finding: Finding, raw: string) => void;
+  /**
+   * Set when the target is an npm package tarball: its package.json license,
+   * or null when it has none. Source maps of an open-source package publish
+   * nothing that is not already public.
+   */
+  npmPackage?: { license: string | null };
 }
 
 /**

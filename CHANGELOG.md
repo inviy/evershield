@@ -9,9 +9,29 @@ change rule defaults and output shapes; each such change is listed.
 
 ### Added
 
+- `evershield scan <name>-<version>.tgz`: scans an npm package tarball as
+  `npm pack` writes it, every text file included, so a release can be gated
+  on what installers actually receive.
+- Rule `artifact/sensitive-file-shipped`: an `.env`, `.npmrc`, signing
+  keystore, SSH key, `.git/config` or coding-agent config in the shipped set
+  is reported by path, even when binary or without a text extension.
+- `artifact/source-map-published` says when a map embeds the original
+  source (`sourcesContent`). In an npm tarball, maps of an open-source
+  package (by its SPDX `license`) are info; a map with `sourcesContent` in a
+  package without an open-source license stays high. A package's maps are
+  grouped into one finding per severity.
 - GitHub Action: `command` input. `command: audit` runs layer 2 and uploads
   its SARIF under the `evershield-audit` category. The default stays `scan`,
   so existing workflows are unchanged; `path` is now required only for `scan`.
+
+### Fixed
+
+- AWS documentation example key IDs (`AKIAIOSFODNN7EXAMPLE` and others
+  ending in `EXAMPLE`) are no longer reported as live AWS keys.
+- `artifact/sensitive-env-name` no longer reports a value that spells the
+  name in camelCase (`RESET_PASSWORD: "resetPassword"`) or an API path, and
+  reports literals in example, fixture, test and docs paths at low
+  confidence. Found by scanning 15 popular npm tarballs: none now blocks.
 
 ### Changed
 

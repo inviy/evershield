@@ -3,6 +3,7 @@ import path from "node:path";
 
 import type { Adapter } from "./adapters.ts";
 import { toScanned } from "./archive.ts";
+import { sensitivePath } from "./sensitive-paths.ts";
 
 /** One text file inside the artifact, as rules see it. */
 export interface ScannedFile {
@@ -49,7 +50,9 @@ export async function collectFiles(
     if (!entry.isFile()) continue;
     const absolutePath = path.join(entry.parentPath, entry.name);
     const relativePath = toPosix(path.relative(root, absolutePath));
-    if (relativePath.split("/").some((segment) => ALWAYS_SKIP_DIRS.has(segment))) continue;
+    const sensitive = sensitivePath(relativePath) !== null;
+    // .git/ is skipped for its bulk, but its config or HEAD in a deploy is a finding.
+    if (!sensitive && relativePath.split("/").some((segment) => ALWAYS_SKIP_DIRS.has(segment))) continue;
     // React Native bundles and Android bytecode in an extracted app or a native build directory.
     if (PACKAGED.test(relativePath)) {
       const info = await stat(absolutePath);
@@ -64,7 +67,11 @@ export async function collectFiles(
     if (info.size === 0 || info.size > maxBytes) continue;
 
     const buffer = await readFile(absolutePath);
-    if (isProbablyBinary(buffer)) continue;
+    if (isProbablyBinary(buffer)) {
+      // A keystore is binary; its presence is still the finding.
+      if (sensitive) files.push({ absolutePath, relativePath, text: "" });
+      continue;
+    }
 
     files.push({ absolutePath, relativePath, text: buffer.toString("utf8") });
   }

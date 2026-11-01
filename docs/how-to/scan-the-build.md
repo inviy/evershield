@@ -15,6 +15,20 @@ npx evershield scan app.asar          # Electron
 npx evershield scan ./dist            # an Expo / React Native export (*.hbc, *.bundle)
 ```
 
+## Before `npm publish`
+
+An npm tarball ships to every installer. Scan exactly what `npm pack`
+produces, so a source map with `sourcesContent`, an `.npmrc` or an `.env`
+that slipped past `files` or `.npmignore` stops the release:
+
+```bash
+npm pack                              # writes <name>-<version>.tgz
+npx evershield scan ./*.tgz
+```
+
+In a release workflow, run both steps before `npm publish`; the scan exits 1
+when it finds something at the gate.
+
 ## Change the output or the gate
 
 ```bash

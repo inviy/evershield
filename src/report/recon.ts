@@ -9,6 +9,7 @@ const KIND: Record<ReconResult["adapter"], string> = {
   android: "Android package",
   ios: "iOS package",
   electron: "Electron archive",
+  npm: "npm package",
 };
 
 function reaLabel(item: ReconItem, ran: boolean): string {

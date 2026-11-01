@@ -1,6 +1,8 @@
 import { access } from "node:fs/promises";
 import path from "node:path";
 
+import { sensitivePath } from "./sensitive-paths.ts";
+
 /**
  * An adapter knows which files in a build directory the browser actually
  * receives, and which environment variable prefixes the framework treats as
@@ -35,10 +37,10 @@ function hasTextExtension(relativePath: string): boolean {
   return TEXT_EXTENSIONS.has(path.posix.extname(relativePath).toLowerCase());
 }
 
-/** Any directory of built files: everything text-like is assumed shipped. */
+/** Any directory of built files: everything text-like is assumed shipped, and so is a credentials file. */
 export const plainAdapter: Adapter = {
   name: "plain",
-  includes: hasTextExtension,
+  includes: (relativePath) => hasTextExtension(relativePath) || sensitivePath(relativePath) !== null,
   publicEnvPrefixes: COMMON_PUBLIC_PREFIXES,
 };
 
@@ -51,8 +53,8 @@ export const plainAdapter: Adapter = {
 export const nextjsAdapter: Adapter = {
   name: "nextjs",
   includes(relativePath) {
+    if (relativePath.startsWith("static/")) return hasTextExtension(relativePath) || sensitivePath(relativePath) !== null;
     if (!hasTextExtension(relativePath)) return false;
-    if (relativePath.startsWith("static/")) return true;
     if (relativePath.startsWith("server/")) {
       const ext = path.posix.extname(relativePath).toLowerCase();
       return ext === ".html" || ext === ".rsc" || ext === ".body";

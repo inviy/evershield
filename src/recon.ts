@@ -163,13 +163,13 @@ export async function runRecon(target: string, options: ReconOptions = {}): Prom
   const collected = await collectTarget(target, options.adapter === undefined ? {} : { adapter: options.adapter });
   // Unredacted values stay in this map and are only compared, never written.
   const raw = new Map<Finding, string>();
-  const findings = runArtifactRules(collected.files, collected.adapter, (finding, value) => raw.set(finding, value));
+  const findings = runArtifactRules(collected.files, collected.adapter, (finding, value) => raw.set(finding, value), collected.adapterName);
 
   let rea: ReconRea = { status: "not-run" };
   let reaOutput: string | null = null;
   if (options.reaBin !== undefined) {
     const isAsar = collected.adapterName === "electron";
-    if (collected.adapterName === "android" || collected.adapterName === "ios") {
+    if (collected.adapterName === "android" || collected.adapterName === "ios" || collected.adapterName === "npm") {
       rea = { status: "skipped", detail: "REA's JavaScript analyzer takes a directory or an .asar; scan the extracted bundle directory with --rea" };
     } else {
       const result = await runRea(options.reaBin, isAsar ? collected.root : path.resolve(collected.root), options.reaTimeoutMs ?? 600_000);
