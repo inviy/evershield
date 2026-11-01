@@ -13,6 +13,15 @@ change rule defaults and output shapes; each such change is listed.
   its SARIF under the `evershield-audit` category. The default stays `scan`,
   so existing workflows are unchanged; `path` is now required only for `scan`.
 
+### Fixed
+
+- Google API keys ending in `-` were missed, and Anthropic, OpenAI and Slack
+  keys ending in `-` or `_` were captured without their last character: the
+  patterns ended in `\b`. They now end in a lookahead of their own character
+  class. Found by new boundary-mutation tests (`src/rules/boundary.test.ts`),
+  which generate edge values for every provider format and check them in
+  twelve file contexts.
+
 ### Changed
 
 - Docs: README, tutorial, how-to guides and CLI reference reorganized by

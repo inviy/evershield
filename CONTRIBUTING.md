@@ -34,6 +34,13 @@ Every detection rule must ship with:
 A rule that cannot point at a file, a response path or a DOM selector is not
 a rule.
 
+A new provider format in `artifact/secret-like-string` also gets an entry in
+`FORMATS` in `src/rules/boundary.test.ts`: its prefixes, character set and
+lengths. The test generates values at the edges of the format (shortest
+length, a last character that is not a word character) and checks each is
+found whole in a dozen file contexts. End a pattern with a negative
+lookahead of its own character class, not `\b`.
+
 ## Pull requests
 
 - One change per PR. Keep the diff reviewable.

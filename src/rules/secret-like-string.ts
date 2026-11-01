@@ -28,19 +28,22 @@ interface ProviderPattern {
 
 const ROTATE = "Rotate the credential now; treat it as compromised. Move its use behind a server endpoint.";
 
+// Patterns end in a negative lookahead of their own character class, not \b: a key may end in
+// `-` or `_`, and `\b` then either truncates the match or, after a fixed count, misses it
+// (boundary-mutation tests in boundary.test.ts).
 const PROVIDERS: ProviderPattern[] = [
   { name: "AWS access key ID", pattern: /\bAKIA[0-9A-Z]{16}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
   { name: "GitHub token", pattern: /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,}\b|\bgithub_pat_[A-Za-z0-9_]{80,}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
   { name: "Stripe secret key", pattern: /\b(?:sk|rk)_live_[0-9A-Za-z]{24,}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
   { name: "Stripe test secret key", pattern: /\b(?:sk|rk)_test_[0-9A-Za-z]{24,}\b/g, severity: "medium", confidence: "high", remediation: "Test keys should not ship either; remove and keep them server-side." },
-  { name: "Slack token", pattern: /\bxox[baprs]-[0-9A-Za-z-]{10,}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
-  { name: "Anthropic API key", pattern: /\bsk-ant-[A-Za-z0-9_-]{32,}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
-  { name: "OpenAI API key", pattern: /\bsk-(?!ant-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{32,}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
+  { name: "Slack token", pattern: /\bxox[baprs]-[0-9A-Za-z-]{10,}(?![0-9A-Za-z-])/g, severity: "critical", confidence: "high", remediation: ROTATE },
+  { name: "Anthropic API key", pattern: /\bsk-ant-[A-Za-z0-9_-]{32,}(?![A-Za-z0-9_-])/g, severity: "critical", confidence: "high", remediation: ROTATE },
+  { name: "OpenAI API key", pattern: /\bsk-(?!ant-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{32,}(?![A-Za-z0-9_-])/g, severity: "critical", confidence: "high", remediation: ROTATE },
   // The header alone is how PEM-parsing code (jose, auth0-spa-js) checks its input; a real key has a base64 body.
   { name: "Private key block", pattern: /-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY(?: BLOCK)?-----(?:\\[rn]|\s)*[A-Za-z0-9+/=]{64,}/g, severity: "critical", confidence: "high", remediation: "Remove the key from the build and rotate it." },
   {
     name: "Google API key",
-    pattern: /\bAIza[0-9A-Za-z_-]{35}\b/g,
+    pattern: /\bAIza[0-9A-Za-z_-]{35}(?![0-9A-Za-z_-])/g,
     severity: "medium",
     confidence: "medium",
     remediation: "Browser keys are expected to ship; confirm this one is restricted to your origins and to the APIs it needs.",
