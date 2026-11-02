@@ -23,6 +23,7 @@ Credentials in shipped files.
 | JWT with no `role` claim | low | medium | Often a fixture, sometimes a live token |
 | Name-based (`apiKey: "…"`) with entropy ≥ 3.5 bits/char and a credential-shaped value | high | low | Depends on the name and the value's shape, not a known format |
 | The same, with an auth header string (`"Authorization"`, `"Bearer "`, `"x-api-key"`, `"x-auth-token"`) within 300 characters | high | medium | The value is being sent as a credential; string literals survive minification, identifiers do not |
+| Credential name holding a placeholder (`your_…`, `changeme`, `xxxx`, `<YOUR_API_KEY>`, `${API_KEY}`, `__TOKEN__`) | info | high | Not a leak, but the build shipped without its real configuration |
 
 A private key block needs a base64 body after its `-----BEGIN … PRIVATE
 KEY-----` header. The header alone is how PEM-parsing code checks its

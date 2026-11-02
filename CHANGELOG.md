@@ -7,6 +7,14 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+### Added
+
+- A credential name holding a placeholder (`apiKey: "your_api_key_here"`,
+  `"<YOUR_API_KEY>"`, `"${API_KEY}"`, `changeme`, `xxxx`) is reported at
+  info severity instead of being dropped: the build shipped without its real
+  configuration. Library sample values (`test`, `example`, `sample`), code
+  (`${e}`) and prose (`<binary data>`) stay silent. Info never blocks.
+
 ### Changed
 
 - A named high-entropy value (`apiKey: "…"`) with an auth header string

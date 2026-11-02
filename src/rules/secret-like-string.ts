@@ -19,7 +19,7 @@
  * a note, because flagging them trains people to ignore the report.
  */
 import type { Confidence, Finding, Severity } from "../index.ts";
-import { decodeJwtPayload, lineColumn, looksLikePlaceholder, redact, shannonEntropy } from "../scan/text.ts";
+import { decodeJwtPayload, lineColumn, looksLikePlaceholder, looksUnfilled, redact, shannonEntropy } from "../scan/text.ts";
 import { helpUri, MAX_FINDINGS_PER_FILE, type Rule, type RuleContext } from "./types.ts";
 
 interface ProviderPattern {
@@ -76,6 +76,10 @@ const JWT = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g;
 
 const NAMED_VALUE =
   /\b((?:[A-Za-z_][A-Za-z0-9_]*?)?(?:secret|token|api[_-]?key|apikey|password|passwd|private[_-]?key|auth[_-]?key)[A-Za-z0-9_]*)["']?\s*[:=]\s*["']([A-Za-z0-9_\-./+=]{16,})["']/gi;
+
+/** The same credential names with any quoted value, to spot stand-ins (`<YOUR_KEY>`, `changeme`) the value pattern above cannot. */
+const NAMED_SLOT =
+  /\b((?:[A-Za-z_][A-Za-z0-9_]*?)?(?:secret|token|api[_-]?key|apikey|password|passwd|private[_-]?key|auth[_-]?key)[A-Za-z0-9_]*)["']?\s*[:=]\s*["']([^"'\n]{4,80})["']/gi;
 
 const MIN_NAMED_ENTROPY = 3.5;
 
@@ -208,6 +212,30 @@ export const secretLikeString: Rule = {
           helpUri: helpUri(secretLikeString.id),
         },
         `named:${name}:${value}`,
+        value,
+      );
+    }
+
+    // A stand-in shipped in place of a credential is not a leak, but the build went out without its real
+    // configuration (or reads it at runtime from somewhere worth checking). Separating these from silent
+    // drops follows "Separating Secrets from Placeholders" (arXiv 2605.31520).
+    for (const match of file.text.matchAll(NAMED_SLOT)) {
+      const name = match[1];
+      const value = match[2];
+      if (name === undefined || value === undefined || isPublicName(name, context) || !looksUnfilled(value)) continue;
+      const { line, column } = lineColumn(file.text, match.index);
+      push(
+        {
+          ruleId: secretLikeString.id,
+          layer: "artifact",
+          severity: "info",
+          confidence: "high",
+          message: `"${name}" holds a placeholder in ${file.relativePath}: the build shipped without its real value`,
+          evidence: [{ kind: "file", path: file.relativePath, line, column, excerpt: `${name} = ${value.slice(0, 24)}` }],
+          remediation: "Check the build's environment: the real value was not injected. Do not fix it by inlining the real secret; keep it server-side.",
+          helpUri: helpUri(secretLikeString.id),
+        },
+        `slot:${name}:${value}`,
         value,
       );
     }
