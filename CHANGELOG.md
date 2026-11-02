@@ -7,6 +7,8 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-02
+
 ### Changed
 
 - README reorganised around why evershield exists, the problem it catches,
@@ -298,7 +300,8 @@ First release: layer 1, the built-artifact scan.
   scanning, then fails on blocking findings.
 - Matched values are redacted in every output format.
 
-[Unreleased]: https://github.com/inviy/evershield/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/inviy/evershield/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/inviy/evershield/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/inviy/evershield/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/inviy/evershield/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/inviy/evershield/compare/v0.4.2...v0.5.0
