@@ -7,6 +7,8 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-02
+
 ### Added
 
 - A credential name holding a placeholder (`apiKey: "your_api_key_here"`,
@@ -23,6 +25,12 @@ change rule defaults and output shapes; each such change is listed.
   default gate: the value is being sent as a credential. Minifiers keep
   string literals, so the signal survives in bundles. No change on the
   false-positive corpus or on 15 popular npm tarballs.
+
+### Fixed
+
+- The GitHub Action's `description` is back under GitHub Marketplace's
+  125-character limit (115); the 0.6.0 wording had grown it to 142, which
+  blocked listing the release on Marketplace.
 
 ## [0.6.0] - 2026-11-02
 
@@ -281,7 +289,8 @@ First release: layer 1, the built-artifact scan.
   scanning, then fails on blocking findings.
 - Matched values are redacted in every output format.
 
-[Unreleased]: https://github.com/inviy/evershield/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/inviy/evershield/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/inviy/evershield/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/inviy/evershield/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/inviy/evershield/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/inviy/evershield/compare/v0.4.1...v0.4.2

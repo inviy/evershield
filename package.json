@@ -1,6 +1,6 @@
 {
   "name": "evershield",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Your paywall is probably just CSS: find Pro data that free users receive in API responses and the rendered page, plus secrets in the bundle",
   "license": "MIT",
   "author": "Lee Dongwook (@inviy)",
