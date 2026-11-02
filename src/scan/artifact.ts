@@ -79,17 +79,69 @@ export async function collectTarget(target: string, options: Pick<ArtifactScanOp
   return { root, adapter, adapterName: adapter.name, files: await collectFiles(root, adapter) };
 }
 
-export function runArtifactRules(files: ScannedFile[], adapter: Adapter, onMatch?: RuleContext["onMatch"]): Finding[] {
+/** package.json `license` of an npm tarball, or null (missing, or the legacy object form without a type). */
+function packageLicense(files: ScannedFile[]): string | null {
+  const manifest = files.find((file) => file.relativePath === "package.json");
+  if (manifest === undefined) return null;
+  try {
+    const license = (JSON.parse(manifest.text) as { license?: unknown }).license;
+    if (typeof license === "string") return license;
+    if (typeof license === "object" && license !== null && typeof (license as { type?: unknown }).type === "string") return (license as { type: string }).type;
+  } catch {
+    // An unreadable manifest is treated as unlicensed.
+  }
+  return null;
+}
+
+const MAX_GROUPED_EVIDENCE = 10;
+
+/**
+ * A package can ship thousands of maps (next ships one per module). One
+ * finding per severity and confidence, listing the first files, says the
+ * same thing without burying the rest of the report.
+ */
+function groupSourceMaps(findings: Finding[]): Finding[] {
+  const groups = new Map<string, Finding[]>();
+  const rest: Finding[] = [];
+  for (const finding of findings) {
+    if (finding.ruleId !== "artifact/source-map-published") rest.push(finding);
+    else {
+      const key = `${finding.severity}/${finding.confidence}`;
+      groups.set(key, [...(groups.get(key) ?? []), finding]);
+    }
+  }
+  for (const group of groups.values()) {
+    if (group.length === 1) {
+      rest.push(group[0]!);
+      continue;
+    }
+    const embedded = group.filter((finding) => finding.message.includes("sourcesContent")).length;
+    rest.push({
+      ...group[0]!,
+      message: `${group.length} source maps ship in this package${embedded > 0 ? ` (${embedded} embed the original source)` : ""}`,
+      evidence: group.slice(0, MAX_GROUPED_EVIDENCE).flatMap((finding) => finding.evidence),
+    });
+  }
+  return rest;
+}
+
+export function runArtifactRules(
+  files: ScannedFile[],
+  adapter: Adapter,
+  onMatch?: RuleContext["onMatch"],
+  kind?: ArtifactScanResult["adapter"],
+): Finding[] {
   const context: RuleContext = {
     adapter,
     shippedPaths: new Set(files.map((file) => file.relativePath)),
     ...(onMatch === undefined ? {} : { onMatch }),
+    ...(kind === "npm" ? { npmPackage: { license: packageLicense(files) } } : {}),
   };
   const findings: Finding[] = [];
   for (const file of files) {
     for (const rule of ARTIFACT_RULES) findings.push(...rule.check(file, context));
   }
-  return sortFindings(findings);
+  return sortFindings(kind === "npm" ? groupSourceMaps(findings) : findings);
 }
 
 /** Layer 1: scan a directory of built files, or an app package, for what should not ship. */
@@ -108,6 +160,6 @@ export async function scanArtifact(
     ignored: 0,
     startedAt,
     finishedAt: new Date().toISOString(),
-    findings: runArtifactRules(collected.files, collected.adapter, options.onMatch),
+    findings: runArtifactRules(collected.files, collected.adapter, options.onMatch, collected.adapterName),
   };
 }

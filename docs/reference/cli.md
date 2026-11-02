@@ -6,7 +6,7 @@
 |---|---|
 | `evershield demo [--fixed] [--no-browser] [--format <text\|json>]` | Runs all three layers on a built-in app whose paywall is only CSS. No config needed. `--fixed` runs the same app after the fixes |
 | `evershield init [--force]` | Detects the framework and writes `evershield.config.json` and a GitHub workflow |
-| `evershield scan <dir\|app> [options]` | Layer 1: scans a built web directory or an app package (`.apk`, `.aab`, `.ipa`, Electron `.asar`) |
+| `evershield scan <dir\|app> [options]` | Layer 1: scans a built web directory or an app package (`.apk`, `.aab`, `.ipa`, Electron `.asar`, npm `.tgz`) |
 | `evershield recon <dir\|app> [--rea] [--rea-bin <path>]` | What reverse-engineering tools recover from a build. `--rea` checks each finding against REA's own output |
 | `evershield audit [options]` | Layer 2: calls configured endpoints as each identity and compares responses (needs config `audit`) |
 | `evershield surface [options]` | Layer 3: opens configured pages as each identity and finds content that is present but hidden (needs config `surface` and Playwright) |

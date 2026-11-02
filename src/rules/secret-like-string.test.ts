@@ -31,6 +31,10 @@ test("an Anthropic key is reported once, not also as an OpenAI key", () => {
   assert.match(findings[0]!.message, /Anthropic/);
 });
 
+test("AWS documentation example key IDs (ending in EXAMPLE) are not findings", () => {
+  for (const example of ["AKIAIOSFODNN7EXAMPLE", "AKIA111111111EXAMPLE"]) assert.equal(check(`"${example}"`).length, 0, example);
+});
+
 test("Supabase service_role JWT is critical; anon JWT is not a finding", () => {
   const service = check(`const key = "${fake.jwt({ role: "service_role", iss: "supabase" })}";`);
   assert.equal(service.length, 1);

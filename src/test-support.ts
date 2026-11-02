@@ -18,7 +18,7 @@ export function file(relativePath: string, text: string): ScannedFile {
 export const plainContext: RuleContext = { adapter: plainAdapter, shippedPaths: new Set() };
 
 export const fake = {
-  awsAccessKeyId: () => ["AKIA", "IOSFODNN7EXAMPLE"].join(""),
+  awsAccessKeyId: () => ["AKIA", "Q7ZR4XK2M9WT3HPL"].join(""),
   anthropicKey: () => ["sk", "ant", "api03", "Q".repeat(40)].join("-"),
   openAiKey: () => ["sk", "proj", "R".repeat(40)].join("-"),
   stripeLiveKey: () => ["sk", "live", "S".repeat(28)].join("_"),

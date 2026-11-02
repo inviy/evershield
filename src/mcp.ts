@@ -37,7 +37,7 @@ export const TOOLS = [
   {
     name: "evershield_scan",
     description:
-      "Layer 1. Scan a built web directory (dist, .next, build) or an app package (.apk, .aab, .ipa, .asar) for what should not ship: secrets, source maps, server-only env names, internal endpoints. Returns the JSON report; `blocking` is how many findings fail the gate.",
+      "Layer 1. Scan a built web directory (dist, .next, build) or a package (.apk, .aab, .ipa, .asar, npm .tgz from `npm pack`) for what should not ship: secrets, source maps, server-only env names, internal endpoints. Returns the JSON report; `blocking` is how many findings fail the gate.",
     inputSchema: {
       type: "object",
       properties: { target: { type: "string", description: "Build directory or app package, relative to the working directory" }, ...GATE_PROPERTIES },

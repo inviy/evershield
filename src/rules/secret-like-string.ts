@@ -32,7 +32,8 @@ const ROTATE = "Rotate the credential now; treat it as compromised. Move its use
 // `-` or `_`, and `\b` then either truncates the match or, after a fixed count, misses it
 // (boundary-mutation tests in boundary.test.ts).
 const PROVIDERS: ProviderPattern[] = [
-  { name: "AWS access key ID", pattern: /\bAKIA[0-9A-Z]{16}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
+  // AWS documents its examples with IDs ending in EXAMPLE (AKIAIOSFODNN7EXAMPLE); the SDK ships them in docs.
+  { name: "AWS access key ID", pattern: /\bAKIA(?![0-9A-Z]{9}EXAMPLE\b)[0-9A-Z]{16}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
   { name: "GitHub token", pattern: /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,}\b|\bgithub_pat_[A-Za-z0-9_]{80,}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
   { name: "Stripe secret key", pattern: /\b(?:sk|rk)_live_[0-9A-Za-z]{24,}\b/g, severity: "critical", confidence: "high", remediation: ROTATE },
   { name: "Stripe test secret key", pattern: /\b(?:sk|rk)_test_[0-9A-Za-z]{24,}\b/g, severity: "medium", confidence: "high", remediation: "Test keys should not ship either; remove and keep them server-side." },

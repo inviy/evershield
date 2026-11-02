@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { crc32, deflateRawSync } from "node:zlib";
+import { crc32, deflateRawSync, gzipSync } from "node:zlib";
 
 import { fake, withTempDir } from "../test-support.ts";
 import { scanArtifact } from "./artifact.ts";
-import { extractStrings, hermesStrings } from "./archive.ts";
+import { extractStrings, hermesStrings, tarEntries } from "./archive.ts";
 
 /** Minimal zip writer: deflated entries, one central directory. */
 function zip(entries: Record<string, Buffer | string>): Buffer {
@@ -76,6 +76,38 @@ function asar(files: Record<string, string>): Buffer {
   header.writeUInt32LE(json.length, 12);
   json.copy(header, 16);
   return Buffer.concat([header, ...bodies]);
+}
+
+/** Minimal ustar writer: long names go to the prefix field, longer ones to a pax header, as npm pack does. */
+function tar(files: Record<string, Buffer | string>): Buffer {
+  const blocks: Buffer[] = [];
+  const header = (name: string, size: number, type: string, prefix = "") => {
+    const block = Buffer.alloc(512);
+    block.write(name, 0, 100);
+    block.write("0000644\0", 100);
+    block.write(`${size.toString(8).padStart(11, "0")}\0`, 124);
+    block.write(type, 156);
+    block.write("ustar\0", 257);
+    block.write("00", 263);
+    block.write(prefix, 345, 155);
+    return block;
+  };
+  const body = (data: Buffer) => Buffer.concat([data, Buffer.alloc((512 - (data.length % 512)) % 512)]);
+  for (const [name, content] of Object.entries(files)) {
+    const data = Buffer.isBuffer(content) ? content : Buffer.from(content);
+    if (name.length > 255) {
+      const record = ` path=${name}\n`;
+      const pax = Buffer.from(`${record.length + String(record.length + 2).length}${record}`);
+      blocks.push(header("PaxHeader", pax.length, "x"), body(pax));
+      blocks.push(header(name.slice(-99), data.length, "0"), body(data));
+    } else if (name.length > 100) {
+      const cut = name.lastIndexOf("/", name.length - 1 - 0) ;
+      blocks.push(header(name.slice(cut + 1), data.length, "0", name.slice(0, cut)), body(data));
+    } else {
+      blocks.push(header(name, data.length, "0"), body(data));
+    }
+  }
+  return Buffer.concat([...blocks, Buffer.alloc(1024)]);
 }
 
 const hermes = (strings: string[]) =>
@@ -152,7 +184,7 @@ test("extractStrings reads ASCII and UTF-16LE runs and drops short noise", () =>
 
 test("a file that is not an app package is a clear error", async () => {
   await withTempDir({ "notes.txt": "hi" }, async (root) => {
-    await assert.rejects(scanArtifact(path.join(root, "notes.txt")), /not a supported app package/);
+    await assert.rejects(scanArtifact(path.join(root, "notes.txt")), /not a supported package/);
   });
 });
 
@@ -191,4 +223,54 @@ test("a corrupt Hermes table falls back to a plain strings pass instead of faili
   const file = hermesFile(["abcdefgh"]);
   file.writeUInt32LE(999_999, 60 + 0); // storage size larger than the file
   assert.equal(hermesStrings(file), null);
+});
+
+test("tar entries: plain, ustar prefix and pax long names", () => {
+  const long = `package/${"a".repeat(120)}/b.js`;
+  const longer = `package/${"c".repeat(300)}.js`;
+  const entries = tarEntries(tar({ "package/x.js": "1", [long]: "2", [longer]: "3" }));
+  assert.deepEqual(entries.map((entry) => entry.name), ["package/x.js", long, longer]);
+  assert.deepEqual(entries.map((entry) => entry.read().toString()), ["1", "2", "3"]);
+});
+
+test("an npm tarball: source maps with sourcesContent, dotfiles and keys in extensionless files are found", async () => {
+  const map = JSON.stringify({ version: 3, sources: ["../src/cli.ts"], sourcesContent: ["// secret sauce"], mappings: "AAAA" });
+  const tgz = gzipSync(tar({
+    "package/package.json": `{"name":"demo","version":"1.0.0"}`,
+    "package/dist/cli.js": "console.log(1)\n//# sourceMappingURL=cli.js.map",
+    "package/dist/cli.js.map": map,
+    "package/.npmrc": "//registry.npmjs.org/:_authToken=${NPM_TOKEN}",
+    "package/.env.example": "API_KEY=",
+    "package/bin/demo": `#!/usr/bin/env node\nconst k="${fake.stripeLiveKey()}";`,
+    "package/node_modules/dep/index.js": `const k="${fake.awsAccessKeyId()}";`,
+  }));
+  await withTempDir({}, async (root) => {
+    const file = path.join(root, "demo-1.0.0.tgz");
+    await writeFile(file, tgz);
+    const result = await scanArtifact(file);
+    assert.equal(result.adapter, "npm");
+    const where = result.findings.map((f) => `${f.ruleId} ${f.evidence[0]?.kind === "file" ? f.evidence[0].path : ""}`);
+    assert.ok(where.includes("artifact/source-map-published dist/cli.js.map"), where.join("\n"));
+    assert.ok(result.findings.some((f) => f.message.includes("sourcesContent")), "embedded source is called out");
+    assert.ok(where.includes("artifact/sensitive-file-shipped .npmrc"), where.join("\n"));
+    assert.ok(where.includes("artifact/secret-like-string bin/demo"), "extensionless files are read as text");
+    assert.ok(!where.some((w) => w.includes(".env.example")), "templates are not findings");
+    assert.ok(!where.some((w) => w.includes("node_modules")), "bundled dependencies are not this package's code");
+  });
+});
+
+test("npm source maps: open-source packages are info and grouped; declaration maps are not reported", async () => {
+  const map = JSON.stringify({ version: 3, sources: ["../src/a.ts"], sourcesContent: ["export const a = 1"], mappings: "AAAA" });
+  const files: Record<string, string> = { "package/package.json": `{"name":"lib","license":"(MIT OR Apache-2.0)"}`, "package/dist/a.d.ts.map": map };
+  for (let i = 0; i < 30; i += 1) files[`package/dist/m${i}.js.map`] = map;
+  await withTempDir({}, async (root) => {
+    const file = path.join(root, "lib-1.0.0.tgz");
+    await writeFile(file, gzipSync(tar(files)));
+    const maps = (await scanArtifact(file)).findings.filter((f) => f.ruleId === "artifact/source-map-published");
+    assert.equal(maps.length, 1, "one grouped finding");
+    assert.equal(maps[0]!.severity, "info");
+    assert.match(maps[0]!.message, /^30 source maps ship in this package \(30 embed the original source\)/);
+    assert.equal(maps[0]!.evidence.length, 10);
+    assert.ok(!maps[0]!.evidence.some((e) => e.kind === "file" && e.path.endsWith(".d.ts.map")));
+  });
 });

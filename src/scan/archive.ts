@@ -1,8 +1,9 @@
 /**
  * Packaged apps as artifacts: Android (.apk, .aab), iOS (.ipa) and Electron
- * (.asar). Everything inside ships to the user's device, so everything a
- * rule can read is scanned. No dependencies: zip is parsed here and inflated
- * with node:zlib; ASAR is a JSON header followed by file bytes.
+ * (.asar), plus npm package tarballs (.tgz from `npm pack`). Everything
+ * inside ships to the user's device or to every installer, so everything a
+ * rule can read is scanned. No dependencies: zip and tar are parsed here and
+ * inflated with node:zlib; ASAR is a JSON header followed by file bytes.
  *
  * Text entries are decoded as UTF-8. Binary entries that carry the strings an
  * attacker would read (Hermes bytecode, DEX, compiled Android XML and
@@ -12,11 +13,12 @@
  */
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { inflateRawSync } from "node:zlib";
+import { gunzipSync, inflateRawSync } from "node:zlib";
 
 import type { ScannedFile } from "./files.ts";
+import { sensitivePath } from "./sensitive-paths.ts";
 
-export type ArchiveKind = "android" | "ios" | "electron";
+export type ArchiveKind = "android" | "ios" | "electron" | "npm";
 
 const MAX_ARCHIVE_BYTES = 1024 * 1024 * 1024;
 const MAX_ENTRY_BYTES = 100 * 1024 * 1024;
@@ -32,6 +34,8 @@ const HERMES_MAGIC = Buffer.from([0xc6, 0x1f, 0xbc, 0x03, 0xc1, 0x03, 0x19, 0x1f
 export function archiveKind(file: string, head: Buffer): ArchiveKind | null {
   const ext = path.extname(file).toLowerCase();
   if (ext === ".asar") return "electron";
+  const gzip = head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b;
+  if (gzip && (ext === ".tgz" || file.toLowerCase().endsWith(".tar.gz"))) return "npm";
   if (head.length < 4 || head.readUInt32LE(0) !== 0x04034b50) return null;
   if (ext === ".ipa") return "ios";
   if (ext === ".apk" || ext === ".aab" || ext === ".xapk") return "android";
@@ -78,6 +82,46 @@ function zipEntries(buffer: Buffer): Entry[] {
         throw new Error(`unsupported zip compression method ${method} for ${name}`);
       },
     });
+  }
+  return entries;
+}
+
+/** Octal size or number field of a tar header. */
+function tarNumber(header: Buffer, offset: number, length: number): number {
+  const text = header.toString("latin1", offset, offset + length).replace(/\0.*$/s, "").trim();
+  return text === "" ? 0 : Number.parseInt(text, 8);
+}
+
+/** ustar and GNU tar as npm writes it, with pax and GNU long names. */
+export function tarEntries(buffer: Buffer): Entry[] {
+  const entries: Entry[] = [];
+  let offset = 0;
+  let longName: string | null = null;
+  while (offset + 512 <= buffer.length) {
+    const header = buffer.subarray(offset, offset + 512);
+    if (header.every((byte) => byte === 0)) break;
+    const size = tarNumber(header, 124, 12);
+    const type = String.fromCharCode(header[156]!);
+    const dataStart = offset + 512;
+    const data = buffer.subarray(dataStart, dataStart + size);
+    offset = dataStart + Math.ceil(size / 512) * 512;
+    if (type === "x") {
+      const pax = /(?:^|\n)\d+ path=([^\n]*)\n/.exec(data.toString("utf8"));
+      if (pax !== null) longName = pax[1]!;
+      continue;
+    }
+    if (type === "L") {
+      longName = data.toString("utf8").replace(/\0.*$/s, "");
+      continue;
+    }
+    let name = header.toString("utf8", 0, 100).replace(/\0.*$/s, "");
+    if (header.toString("latin1", 257, 262) === "ustar") {
+      const prefix = header.toString("utf8", 345, 500).replace(/\0.*$/s, "");
+      if (prefix !== "") name = `${prefix}/${name}`;
+    }
+    if (longName !== null) name = longName;
+    longName = null;
+    if ((type === "0" || type === "\0") && size <= MAX_ENTRY_BYTES) entries.push({ name, read: () => data });
   }
   return entries;
 }
@@ -209,11 +253,19 @@ function looksBinary(buffer: Buffer): boolean {
   return false;
 }
 
-/** Turn one archive entry, or a loose file from an extracted app, into what rules read. */
-export function toScanned(name: string, data: Buffer, location: string): ScannedFile | null {
-  if (data.length === 0 || SKIP_ENTRY.test(name)) return null;
+/**
+ * Turn one archive entry, or a loose file from an extracted app, into what
+ * rules read. `anyText` reads every non-binary entry as text whatever its
+ * name (npm packages ship LICENSE, bin scripts and dotfiles without an
+ * extension).
+ */
+export function toScanned(name: string, data: Buffer, location: string, anyText = false): ScannedFile | null {
+  if (data.length === 0) return null;
+  // Kept even when binary: the path is the finding.
+  if (sensitivePath(name) !== null && looksBinary(data)) return { absolutePath: location, relativePath: name, text: "" };
+  if (SKIP_ENTRY.test(name)) return null;
   const isHermes = data.length >= 8 && data.subarray(0, 8).equals(HERMES_MAGIC);
-  if (!isHermes && TEXT_ENTRY.test(name) && !looksBinary(data)) {
+  if (!isHermes && (anyText || TEXT_ENTRY.test(name) || sensitivePath(name) !== null) && !looksBinary(data)) {
     return { absolutePath: location, relativePath: name, text: data.toString("utf8") };
   }
   if (isHermes || STRINGS_ENTRY.test(name) || isMainExecutable(name, data)) {
@@ -237,12 +289,19 @@ export async function collectArchive(file: string): Promise<{ kind: ArchiveKind;
   if (info.size > MAX_ARCHIVE_BYTES) throw new Error(`${file} is larger than ${MAX_ARCHIVE_BYTES / 1024 / 1024} MiB`);
   const buffer = await readFile(file);
   const kind = archiveKind(file, buffer);
-  if (kind === null) throw new Error(`not a supported app package (.apk, .aab, .ipa, .asar): ${file}`);
-  const entries = kind === "electron" ? asarEntries(buffer) : zipEntries(buffer);
+  if (kind === null) throw new Error(`not a supported package (.apk, .aab, .ipa, .asar, npm .tgz): ${file}`);
+  const entries =
+    kind === "electron"
+      ? asarEntries(buffer)
+      : kind === "npm"
+        ? tarEntries(gunzipSync(buffer, { maxOutputLength: MAX_ARCHIVE_BYTES }))
+        : zipEntries(buffer);
   const files: ScannedFile[] = [];
   for (const entry of entries) {
     if (entry.name.split("/").includes("node_modules") && kind !== "electron") continue;
-    const scanned = toScanned(entry.name, entry.read(), `${file}!/${entry.name}`);
+    // npm pack puts everything under package/; report paths as they sit in the installed package.
+    const name = kind === "npm" ? entry.name.replace(/^[^/]+\//, "") : entry.name;
+    const scanned = toScanned(name, entry.read(), `${file}!/${entry.name}`, kind === "npm");
     if (scanned !== null) files.push(scanned);
   }
   files.sort((a, b) => (a.relativePath < b.relativePath ? -1 : 1));

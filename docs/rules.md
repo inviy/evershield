@@ -25,7 +25,9 @@ A private key block needs a base64 body after its `-----BEGIN … PRIVATE
 KEY-----` header. The header alone is how PEM-parsing code checks its
 input (auth0-spa-js bundles such a check) and is not a finding.
 
-Not reported: Stripe publishable keys, Supabase `anon`/`authenticated` JWTs,
+Not reported: AWS documentation example key IDs (ending in `EXAMPLE`, as in
+`AKIAIOSFODNN7EXAMPLE`, which the AWS SDK ships in its docs), Stripe
+publishable keys, Supabase `anon`/`authenticated` JWTs,
 values under a framework-public prefix (`NEXT_PUBLIC_`, `VITE_`, …),
 placeholder values (`your_…`, `xxxx`, `changeme`), and values shaped like
 CSS custom properties or paths (`--brand-color-hover`, `spacing.large.default`).
@@ -42,9 +44,49 @@ A `.map` file in the shipped set, or an inline `data:` source map.
 | Shipped `.map` file | high | high |
 | Inline `sourceMappingURL=data:` | high | high |
 
+When a shipped map carries `sourcesContent`, the message says so: the map
+then holds the original source verbatim, not just file names and positions.
+This is how the Claude Code CLI source was published through npm in March
+2026.
+
+In an npm package tarball the question is whose source it is:
+
+| Package `license` in package.json | Map | Severity | Confidence |
+|---|---|---|---|
+| Open source (SPDX: `MIT`, `Apache-2.0`, `(MIT OR Apache-2.0)`, …) | any | info | high |
+| Anything else (`UNLICENSED`, `SEE LICENSE IN …`, none) | with `sourcesContent` | high | high |
+| Anything else | without `sourcesContent` | high | medium |
+
+Open-source packages ship maps on purpose and their source is public
+already. Declaration maps (`*.d.ts.map`) are not reported in a package, and
+a package's maps are grouped into one finding per severity, listing the
+first ten files.
+
 A `sourceMappingURL` comment pointing at a file that is not shipped leaks
 nothing and is not reported. The Next.js adapter excludes `server/` maps for
 the same reason: they never leave the host.
+
+### artifact/sensitive-file-shipped
+
+A file whose presence is the leak, whatever it contains. The path decides;
+the content is never quoted (the secret rule reports any credential inside).
+
+| Match | Severity | Confidence |
+|---|---|---|
+| `id_rsa`, `id_dsa`, `id_ecdsa`, `id_ed25519` | critical | high |
+| `*.jks`, `*.keystore`, `*.p12`, `*.pfx` | high | high |
+| `.git/config`, `.git/HEAD` (the repository can be downloaded) | high | high |
+| `.aws/credentials`, `.netrc`, `.pgpass`, `.htpasswd` | high | high |
+| `.env`, `.env.*` | high | medium |
+| `.npmrc` | high | medium |
+| `.mcp.json`, `.claude/settings.json`, `.claude/settings.local.json`, `.cursor/mcp.json` | medium | high |
+
+`.env.example`, `.env.sample`, `.env.template`, `.env.dist` and
+`.env.defaults` are templates by convention and are not reported. `.env`
+and `.npmrc` are medium confidence because they can hold only public
+values. These files are read even when binary (a keystore) or without a
+text extension, but only where the adapter serves files: under `static/`
+for Next.js, anywhere for `plain`.
 
 ### artifact/sensitive-env-name
 
@@ -62,6 +104,12 @@ Environment variable names that denote server-only material:
 client auth code (`PASSWORD_RECOVERY` is a supabase-js event name), so they
 are reported only with a secret-shaped value. Names under a framework-public
 prefix are never reported.
+
+A value that spells the name in camelCase (`RESET_PASSWORD: "resetPassword"`,
+`PREVIEW_SIGNING_KEY = "previewModeSigningKey"`) is a property key, and an API
+path (`"/v1/accounts:resetPassword"`) names an endpoint; neither is reported.
+In example, fixture, test and docs paths (`*.examples.json`, `test/`,
+`__fixtures__/`) a literal is usually sample data, so its confidence is low.
 
 ### artifact/internal-endpoint
 
@@ -181,6 +229,7 @@ memory and nothing is extracted to disk.
 | Android `.apk`, `.aab` | extension and zip signature | JS bundles and web assets as text; Hermes bytecode, `classes*.dex`, binary `AndroidManifest.xml` and `resources.arsc` as strings. Images, native libraries and signatures are skipped |
 | iOS `.ipa` | extension and zip signature | `main.jsbundle` and other text assets; the app's Mach-O executable and binary plists as strings |
 | Electron `.asar` | extension | every file in the archive (except `unpacked` ones, which live beside it) |
+| npm package `.tgz`, `.tar.gz` | extension and gzip signature | every text file in the tarball, with or without an extension (paths reported without the `package/` prefix); bundled `node_modules/` are skipped |
 
 In a directory, `*.bundle`, `*.jsbundle`, `*.hbc` and `*.dex` files are read
 the same way, so an Expo export (`expo export`) or a native build directory

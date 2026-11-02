@@ -34,7 +34,7 @@ Usage:
                                     and a GitHub workflow that scans every pull request
   evershield scan <dir|app> [options]
                                     Layer 1: scan a built web directory, or an app package
-                                    (.apk, .aab, .ipa, Electron .asar)
+                                    (.apk, .aab, .ipa, Electron .asar, npm .tgz)
   evershield recon <dir|app> [--rea] [--rea-bin <path>]
                                     The attacker's view: what reverse-engineering tools such
                                     as REA recover from a build or app package. Fails when

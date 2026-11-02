@@ -1,5 +1,6 @@
 import { internalEndpoint } from "./internal-endpoint.ts";
 import { secretLikeString } from "./secret-like-string.ts";
+import { sensitiveFileShipped } from "./sensitive-file-shipped.ts";
 import { sensitiveEnvName } from "./sensitive-env-name.ts";
 import { sourceMapPublished } from "./source-map-published.ts";
 import type { Rule } from "./types.ts";
@@ -8,6 +9,7 @@ import type { Rule } from "./types.ts";
 export const ARTIFACT_RULES: readonly Rule[] = [
   secretLikeString,
   sourceMapPublished,
+  sensitiveFileShipped,
   sensitiveEnvName,
   internalEndpoint,
 ];
