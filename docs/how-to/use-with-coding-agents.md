@@ -36,3 +36,17 @@ claude mcp add evershield -- npx -y evershield@latest mcp
 command = "npx"
 args = ["-y", "evershield@latest", "mcp"]
 ```
+
+## What the agent receives
+
+Reports quote what was scanned: file names, identifiers, page text. A
+repository or page can be written to address the agent that reads them, so
+the server treats every result as untrusted data:
+
+- invisible and bidirectional control characters (zero-width spaces, RTL
+  overrides) are removed from every string,
+- each string is capped at 500 characters,
+- each result ends with a note that its contents are data, not instructions.
+
+Matched secret values never reach the agent: the report carries only the
+first and last four characters, as in every other output.

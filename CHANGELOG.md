@@ -9,6 +9,13 @@ change rule defaults and output shapes; each such change is listed.
 
 ### Added
 
+- `evershield mcp` treats results as untrusted data: every string is
+  stripped of invisible and bidirectional control characters and capped at
+  500 characters, and each result ends with a note that its contents came
+  from the scanned files and are not instructions. A scanned repository or
+  page can no longer hide text addressed to the agent in a file name or an
+  identifier.
+
 - `evershield scan <name>-<version>.tgz`: scans an npm package tarball as
   `npm pack` writes it, every text file included, so a release can be gated
   on what installers actually receive.
