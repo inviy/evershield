@@ -7,6 +7,8 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-02
+
 ### Added
 
 - LLM provider keys: OpenRouter (`sk-or-v1-`), Groq (`gsk_`), xAI (`xai-`),
@@ -262,7 +264,8 @@ First release: layer 1, the built-artifact scan.
   scanning, then fails on blocking findings.
 - Matched values are redacted in every output format.
 
-[Unreleased]: https://github.com/inviy/evershield/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/inviy/evershield/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/inviy/evershield/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/inviy/evershield/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/inviy/evershield/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/inviy/evershield/compare/v0.4.0...v0.4.1
