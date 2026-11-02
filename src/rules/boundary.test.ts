@@ -32,6 +32,12 @@ const FORMATS: Format[] = [
   { name: "Anthropic API key", prefixes: ["sk-ant-"], charset: `${ALNUM}_-`, lengths: [32, 95] },
   { name: "OpenAI API key", prefixes: ["sk-", "sk-proj-", "sk-svcacct-"], charset: `${ALNUM}_-`, lengths: [32, 120] },
   { name: "Google API key", prefixes: ["AIza"], charset: `${ALNUM}_-`, lengths: [35] },
+  { name: "OpenRouter API key", prefixes: ["sk-or-v1-"], charset: "0123456789abcdef", lengths: [64] },
+  { name: "Groq API key", prefixes: ["gsk_"], charset: ALNUM, lengths: [52] },
+  { name: "xAI API key", prefixes: ["xai-"], charset: ALNUM, lengths: [80] },
+  { name: "Perplexity API key", prefixes: ["pplx-"], charset: ALNUM, lengths: [48] },
+  { name: "Hugging Face token", prefixes: ["hf_"], charset: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", lengths: [34] },
+  { name: "Replicate API token", prefixes: ["r8_"], charset: ALNUM, lengths: [37] },
 ];
 
 /** Deterministic body of `length` characters from `charset`, ending in `last`. */
