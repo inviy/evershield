@@ -8,8 +8,54 @@
 users actually receive, in the API response and in the page, and fails the
 build when a free user is holding your Pro data.
 
+[한국어](README.ko.md)
+
+## Why I built it
+
+A side project of mine had a "Pro only" metric. Free users saw it blurred,
+with a lock icon on top. It looked locked. Then I opened DevTools: the real
+number was in every free user's JSON, and in the DOM under the blur.
+
+Nothing about it looked like a leak to the tools I had. No secret scanner
+flags a number. Lint was clean, the tests passed, the UI did what it was
+told. The bug was that the server sent the data and the client decided not
+to show it.
+
+## The problem
+
+This is how many paid tiers get built, by hand or by an AI coding agent:
+the API returns the full object, and the client blurs, hides or locks what
+the plan does not include. It is one DevTools tab away, and agent tools
+that reverse engineer web apps now read it automatically.
+
+| What it looks like | What the free user actually has |
+|---|---|
+| Pro numbers blurred, lock icon on the card | the numbers, in the DOM |
+| "Upgrade to see" in place of a chart | the chart data, in the API response |
+| a clean production build | a billing key in the bundle, the source in a `.map` |
+
+## What evershield does
+
+It calls your app as each identity you configure (anonymous, free, pro, …),
+compares what each one receives, and fails CI when a lower plan gets a
+higher plan's data. It checks three places, from what the user sees down to
+what the bundle ships:
+
+| Layer | Command | Catches | Example |
+|---|---|---|---|
+| **3 · Surface** | `surface` | data hidden by CSS instead of withheld by the server | blurred Pro numbers present in the free page's DOM |
+| **2 · Response** | `audit` | higher-tier fields in lower-tier API responses | "Pro only" metrics in every free user's JSON |
+| **1 · Artifact** | `scan` | keys, internal URLs, source maps in the build or npm tarball | a billing key in the bundle, a published `.map` |
+
+Every finding names the file, response path or DOM selector, says how sure
+it is, and says how to fix it. Matched secrets are never printed in full.
+
+## Try it in 30 seconds
+
 ```bash
-npx evershield demo      # 30 seconds, no config: a built-in app whose paywall only blurs
+npx evershield demo                                # layers 1 and 2, no setup
+npx playwright install chromium                    # once, for layer 3
+npx -p evershield -p playwright evershield demo    # all three layers
 ```
 
 ```
@@ -24,43 +70,32 @@ The paywall was CSS; the data was already in the free user's hands.
 ```
 
 `npx evershield demo --fixed` runs the same app after the fixes and reports
-nothing. Layer 3 needs Playwright (`npm install playwright && npx playwright
-install chromium`); without it the demo shows layers 1 and 2.
+nothing.
+
+## Who it is for
+
+- **Useful if** you ship a web app with free and paid plans, especially one
+  built fast or with an AI coding agent, and you want CI to fail before a
+  plan boundary leaks. Layer 1 alone is also a pre-publish gate for npm
+  packages (`npm pack && npx evershield scan *.tgz`).
+- **Not for** finding vulnerabilities in code you do not own, replacing a
+  pentest, or replacing a secret scanner on your repository history.
+
+## Limits, honestly
+
+- Layers 2 and 3 need setup: test accounts for each plan (tokens or a saved
+  browser session in environment variables), the endpoints and pages to
+  check, and what each plan must not receive. Expect 10 to 30 minutes.
+- It checks what you list. An endpoint or page you leave out is not audited.
+- Layer 1 overlaps with gitleaks and trufflehog, which can also scan a build
+  directory; run both. What evershield adds there is build-aware filtering,
+  app packages and npm tarballs, and the same gate and SARIF output.
+- Pre-release, one maintainer, tested on one production app so far (the side
+  project above). Issues and false-positive reports are the most useful
+  contribution right now.
 
 > Status: pre-release. All three layers work. Follow the
 > [roadmap](docs/design.md#roadmap) or open an issue to help shape it.
-
-## Why
-
-A common way to build a paid tier: the API returns the full object, and the
-client decides what to show. Free users get the numbers blurred, a lock icon
-over a card, a `display: none` on the Pro section. It looks locked. It is
-not: the values are in the response and in the DOM, one DevTools tab away,
-and agent tools that reverse engineer web apps now read them automatically.
-
-This is how evershield started. A side project of mine showed a "Pro only"
-metric blurred in the UI while the real number was in every free user's
-JSON. No secret scanner would ever flag that: nothing secret-shaped leaked,
-just data the wrong tier could read.
-
-evershield checks three places, before deploy:
-
-| Layer | Command | What it catches | Example |
-|---|---|---|---|
-| **3 · Surface** | `surface` | data hidden by CSS instead of withheld by the server | a blurred paywall with the real numbers in the DOM |
-| **2 · Response** | `audit` | higher-tier data in lower-tier API responses | "Pro only" metrics in every free user's JSON |
-| **1 · Artifact** | `scan` | keys, internal URLs, source maps in the build | a billing key in the bundle, a published `.map` |
-
-The order matches the demo: from what the user sees, down to what the bundle
-ships. Rule IDs carry the layer name (`surface/…`, `response/…`,
-`artifact/…`); commands carry the verb.
-
-Layers 2 and 3 call your own app as each identity you configure (anonymous,
-free, pro, ...) and compare what each one gets. Layer 1 overlaps with secret
-scanners such as gitleaks, which can also scan a build directory; run both.
-What evershield adds there is build-aware filtering (only browser-facing
-Next.js files, app packages such as `.apk` and `.ipa`) and the same report,
-gate and SARIF output as the other two layers.
 
 ## Get started
 

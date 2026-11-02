@@ -172,7 +172,12 @@ export async function runDemo(mode: DemoMode, options: DemoOptions = {}): Promis
         // any other launch failure shows its own first line, which says what to fix.
         surfaceLayer.skipped =
           message === PLAYWRIGHT_MISSING
-            ? "skipped: needs Playwright. Run `npm install playwright && npx playwright install chromium`, then try again."
+            ? [
+                "skipped: this layer opens the page in a browser and needs Playwright.",
+                "   It is the one that finds the blurred Pro numbers sitting in the free user's DOM. To see it:",
+                "     npx playwright install chromium            # once, downloads the browser",
+                "     npx -p evershield -p playwright evershield demo",
+              ].join("\n")
             : `skipped: ${message.split("\n")[0]}`;
       }
     }

@@ -7,6 +7,15 @@ change rule defaults and output shapes; each such change is listed.
 
 ## [Unreleased]
 
+### Changed
+
+- README reorganised around why evershield exists, the problem it catches,
+  who it is for and its limits; a Korean README (`README.ko.md`) is added.
+- `evershield demo` without Playwright explains what layer 3 would have
+  shown and gives the two commands that run it
+  (`npx playwright install chromium`, then
+  `npx -p evershield -p playwright evershield demo`).
+
 ## [0.7.0] - 2026-11-02
 
 ### Added
