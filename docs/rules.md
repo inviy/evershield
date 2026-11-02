@@ -33,7 +33,8 @@ Not reported: AWS documentation example key IDs (ending in `EXAMPLE`, as in
 `AKIAIOSFODNN7EXAMPLE`, which the AWS SDK ships in its docs), Stripe
 publishable keys, Supabase `anon`/`authenticated` JWTs,
 values under a framework-public prefix (`NEXT_PUBLIC_`, `VITE_`, …),
-placeholder values (`your_…`, `xxxx`, `changeme`), and values shaped like
+library sample values (`test…`, `example…`, `sample…`; placeholders such
+as `your_…` are info findings, see above), and values shaped like
 CSS custom properties or paths (`--brand-color-hover`, `spacing.large.default`).
 
 Reports never print the matched value in full; evidence shows the first and
