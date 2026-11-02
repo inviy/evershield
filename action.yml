@@ -1,5 +1,5 @@
 name: evershield
-description: Fail the build when a lower plan receives a higher plan's data, or the build ships keys and source maps. Runs scan or audit and uploads SARIF.
+description: Fail the build when a lower plan gets a higher plan's data, or the build ships keys or source maps. SARIF included.
 author: Lee Dongwook (@inviy)
 
 branding:
