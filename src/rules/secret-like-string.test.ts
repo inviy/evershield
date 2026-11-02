@@ -60,9 +60,9 @@ test("named high-entropy values are high severity but low confidence", () => {
   assert.match(findings[0]!.evidence[0]!.excerpt ?? "", /apiKey = Zq8v…/);
 });
 
-test("public-by-design and placeholder values are not findings", () => {
+test("public-by-design and repeated-character values are not findings", () => {
+  // Placeholders such as "your_api_key_here" are info findings now; see the placeholder test below.
   const clean = [
-    `apiKey: "your_api_key_here_ok"`,
     `password: "aaaaaaaaaaaaaaaaaaaa"`,
     `NEXT_PUBLIC_API_KEY: "${fake.highEntropy()}"`,
     `VITE_TOKEN = "${fake.highEntropy()}"`,
@@ -108,6 +108,20 @@ test("LLM provider keys are critical and named for their provider", () => {
     assert.match(findings[0]!.message, new RegExp(`^${label}`), label);
     assert.ok(!JSON.stringify(findings[0]).includes(secret), `${label} must be redacted`);
   }
+});
+
+test("a placeholder in a credential slot is an info finding: the build shipped without its real value", () => {
+  for (const value of ["your_api_key_here", "<YOUR_API_KEY>", "${STRIPE_SECRET_KEY}", "changeme", "xxxxxxxxxxxx", "__API_TOKEN__"]) {
+    const findings = check(`const config = { apiKey: "${value}" };`);
+    assert.equal(findings.length, 1, value);
+    assert.equal(findings[0]!.severity, "info", value);
+    assert.match(findings[0]!.message, /placeholder/, value);
+  }
+  // Code and prose, not stand-ins; library samples stay silent as before.
+  for (const value of ["${e}", "<binary data>", "test-token-value", "example_secret_1", "sample"]) {
+    assert.equal(check(`const o = { token: "${value}" };`).filter((f) => f.message.includes("placeholder")).length, 0, value);
+  }
+  assert.equal(check(`const c = { NEXT_PUBLIC_API_KEY: "your_key_here" };`).length, 0, "public names are never findings");
 });
 
 test("the same secret in one file is reported once", () => {

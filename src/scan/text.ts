@@ -42,6 +42,15 @@ export function shannonEntropy(value: string): number {
 
 const PLACEHOLDER = /^(x+|0+|\*+|your[_-]|changeme|placeholder|example|dummy|test|sample|<)/i;
 
+/** Stand-ins that say "put the real value here": in a shipped build, the real one is missing. */
+const UNFILLED = /^(?:x{4,}|\*{4,}|your[_-]|changeme|placeholder|replace[_-]?me|insert[_-])/i;
+/** Template slots name the variable in capitals (`<YOUR_API_KEY>`, `${API_KEY}`); `${e}` is code and `<binary data>` is prose. */
+const UNFILLED_SLOT = /^(?:<[A-Z][A-Z0-9_ -]{2,}>|\$\{[A-Z][A-Z0-9_]{2,}\}|%[A-Z][A-Z0-9_]{2,}%|__[A-Z][A-Z0-9_]{2,}__)$/;
+
+export function looksUnfilled(value: string): boolean {
+  return UNFILLED.test(value) || UNFILLED_SLOT.test(value);
+}
+
 /** Values humans type as stand-ins; never worth a finding on their own. */
 export function looksLikePlaceholder(value: string): boolean {
   return PLACEHOLDER.test(value) || /^(.)\1+$/.test(value);
