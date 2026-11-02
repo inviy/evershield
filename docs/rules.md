@@ -22,6 +22,7 @@ Credentials in shipped files.
 | Google API key in a file that also calls Gemini (`generativelanguage.googleapis.com`, `@google/genai`) | high | medium | A Maps or Firebase key works for Gemini once the project enables it, and is billed for it |
 | JWT with no `role` claim | low | medium | Often a fixture, sometimes a live token |
 | Name-based (`apiKey: "…"`) with entropy ≥ 3.5 bits/char and a credential-shaped value | high | low | Depends on the name and the value's shape, not a known format |
+| The same, with an auth header string (`"Authorization"`, `"Bearer "`, `"x-api-key"`, `"x-auth-token"`) within 300 characters | high | medium | The value is being sent as a credential; string literals survive minification, identifiers do not |
 
 A private key block needs a base64 body after its `-----BEGIN … PRIVATE
 KEY-----` header. The header alone is how PEM-parsing code checks its

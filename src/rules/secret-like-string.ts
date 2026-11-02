@@ -9,7 +9,9 @@
  *   they grant server-side access or a bill anyone can run up. A Google
  *   browser key is medium, raised to high when the same file calls Gemini.
  * - Name-based matches (`apiKey: "…"`) depend on the value's entropy and on
- *   the name not being a framework-public variable, so confidence is low.
+ *   the name not being a framework-public variable, so confidence is low;
+ *   medium when an auth header string (`"Authorization"`, `"Bearer "`,
+ *   `"x-api-key"`) sits within 300 characters, because the value is sent.
  *   Severity stays high because when they are real they are just as bad.
  *
  * Public-by-design keys (Stripe `pk_`, Supabase anon JWTs, Google browser
@@ -76,6 +78,14 @@ const NAMED_VALUE =
   /\b((?:[A-Za-z_][A-Za-z0-9_]*?)?(?:secret|token|api[_-]?key|apikey|password|passwd|private[_-]?key|auth[_-]?key)[A-Za-z0-9_]*)["']?\s*[:=]\s*["']([A-Za-z0-9_\-./+=]{16,})["']/gi;
 
 const MIN_NAMED_ENTROPY = 3.5;
+
+/**
+ * Strings that send a credential: an auth header name or scheme. Minifiers rename identifiers but keep
+ * string literals, so these survive in any bundle (StringGroup / Secretron, arXiv 2608.04523). A named
+ * high-entropy value with one of them close by is being used as a credential.
+ */
+const CREDENTIAL_USE = /["'`](?:Authorization|Bearer |Basic |x-api-key|x-auth-token|api-key|x-goog-api-key|apikey)["'`:]/i;
+const CONTEXT_WINDOW = 300;
 
 function isPublicName(name: string, context: RuleContext): boolean {
   const upper = name.toUpperCase();
@@ -182,13 +192,17 @@ export const secretLikeString: Rule = {
       if (isPublicName(name, context) || looksLikePlaceholder(value)) continue;
       if (!looksLikeCredentialValue(value)) continue;
       const { line, column } = lineColumn(file.text, match.index);
+      const around = file.text.slice(Math.max(0, match.index - CONTEXT_WINDOW), match.index + match[0].length + CONTEXT_WINDOW);
+      const used = CREDENTIAL_USE.test(around);
       push(
         {
           ruleId: secretLikeString.id,
           layer: "artifact",
           severity: "high",
-          confidence: "low",
-          message: `"${name}" is assigned a high-entropy value in ${file.relativePath}`,
+          confidence: used ? "medium" : "low",
+          message: used
+            ? `"${name}" is assigned a high-entropy value in ${file.relativePath}, next to an auth header that sends it`
+            : `"${name}" is assigned a high-entropy value in ${file.relativePath}`,
           evidence: [{ kind: "file", path: file.relativePath, line, column, excerpt: `${name} = ${redact(value)}` }],
           remediation: "If this is a real credential, rotate it and move the call server-side. If it is public by design, rename it with your framework's public prefix.",
           helpUri: helpUri(secretLikeString.id),

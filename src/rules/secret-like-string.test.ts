@@ -110,6 +110,21 @@ test("LLM provider keys are critical and named for their provider", () => {
   }
 });
 
+test("a named high-entropy value next to an auth header string is medium confidence", () => {
+  const value = fake.highEntropy();
+  const sent = check(`var c={apiKey:"${value}"};fetch(u,{headers:{"x-api-key":c.apiKey}})`);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0]!.confidence, "medium");
+  assert.match(sent[0]!.message, /auth header/);
+  const bearer = check(`const t={token:"${value}"};h.set("Authorization","Bearer "+t.token)`);
+  assert.equal(bearer[0]!.confidence, "medium");
+  // The same value with no header in reach stays low: a config blob, a fixture, a hash.
+  const far = check(`var c={apiKey:"${value}"};${"x".repeat(400)};h.set("Authorization",z)`);
+  assert.equal(far[0]!.confidence, "low");
+  // An identifier named authorization is not the header string.
+  assert.equal(check(`var authorization=1,c={apiKey:"${value}"}`)[0]!.confidence, "low");
+});
+
 test("the same secret in one file is reported once", () => {
   const secret = fake.awsAccessKeyId();
   const findings = check(`"${secret}" "${secret}" "${secret}"`);
