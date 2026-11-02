@@ -84,6 +84,32 @@ test("Google browser keys are medium severity with a restriction note", () => {
   assert.match(findings[0]!.remediation ?? "", /restricted/);
 });
 
+test("a Google key next to Gemini API calls is high: it can be billed for Gemini", () => {
+  const findings = check(`const k="${fake.googleKey()}";fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+k)`);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0]!.severity, "high");
+  assert.match(findings[0]!.message, /Gemini/);
+  assert.match(findings[0]!.remediation ?? "", /server/);
+});
+
+test("LLM provider keys are critical and named for their provider", () => {
+  const cases: Array<[string, string]> = [
+    ["OpenRouter API key", ["sk", "or", "v1", "a1b2c3d4".repeat(8)].join("-")],
+    ["Groq API key", ["gsk", "Q".repeat(26) + "7".repeat(26)].join("_")],
+    ["xAI API key", ["xai", "X9".repeat(40)].join("-")],
+    ["Perplexity API key", ["pplx", "P4".repeat(24)].join("-")],
+    ["Hugging Face token", ["hf", "AbCd".repeat(8) + "Ef"].join("_")],
+    ["Replicate API token", ["r8", "R5".repeat(18) + "x"].join("_")],
+  ];
+  for (const [label, secret] of cases) {
+    const findings = check(`const k = "${secret}";`);
+    assert.equal(findings.length, 1, `${label}: ${findings.map((f) => f.message).join(", ")}`);
+    assert.equal(findings[0]!.severity, "critical", label);
+    assert.match(findings[0]!.message, new RegExp(`^${label}`), label);
+    assert.ok(!JSON.stringify(findings[0]).includes(secret), `${label} must be redacted`);
+  }
+});
+
 test("the same secret in one file is reported once", () => {
   const secret = fake.awsAccessKeyId();
   const findings = check(`"${secret}" "${secret}" "${secret}"`);

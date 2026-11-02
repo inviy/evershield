@@ -14,10 +14,12 @@ Credentials in shipped files.
 
 | Match | Severity | Confidence | Why |
 |---|---|---|---|
-| AWS access key ID, GitHub token, Stripe live secret key, Slack token, Anthropic key, OpenAI key, private key block | critical | high | Provider formats are structurally unambiguous and grant server-side access |
+| AWS access key ID, GitHub token, Stripe live secret key, Slack token, private key block | critical | high | Provider formats are structurally unambiguous and grant server-side access |
+| LLM provider keys: Anthropic, OpenAI, OpenRouter (`sk-or-v1-`), Groq (`gsk_`), xAI (`xai-`), Perplexity (`pplx-`), Hugging Face (`hf_`), Replicate (`r8_`) | critical | high | A shipped key is a bill anyone can run up; studies find them in 40%+ of Android apps |
 | Supabase JWT with `role: service_role` | critical | high | Bypasses row-level security entirely |
 | Stripe test secret key | medium | high | Not live, still should not ship |
 | Google API key (`AIza…`) | medium | medium | Browser keys are expected; the risk is a missing origin restriction |
+| Google API key in a file that also calls Gemini (`generativelanguage.googleapis.com`, `@google/genai`) | high | medium | A Maps or Firebase key works for Gemini once the project enables it, and is billed for it |
 | JWT with no `role` claim | low | medium | Often a fixture, sometimes a live token |
 | Name-based (`apiKey: "…"`) with entropy ≥ 3.5 bits/char and a credential-shaped value | high | low | Depends on the name and the value's shape, not a known format |
 

@@ -9,13 +9,20 @@ change rule defaults and output shapes; each such change is listed.
 
 ### Added
 
+- LLM provider keys: OpenRouter (`sk-or-v1-`), Groq (`gsk_`), xAI (`xai-`),
+  Perplexity (`pplx-`), Hugging Face (`hf_`) and Replicate (`r8_`) are
+  critical, alongside the existing Anthropic and OpenAI formats. OpenRouter
+  keys are no longer reported as OpenAI keys.
+- A Google API key in a file that also calls Gemini
+  (`generativelanguage.googleapis.com`, `@google/genai`) is high instead of
+  medium: a browser key works for Gemini once the project enables it, and
+  is billed for it.
 - `evershield mcp` treats results as untrusted data: every string is
   stripped of invisible and bidirectional control characters and capped at
   500 characters, and each result ends with a note that its contents came
   from the scanned files and are not instructions. A scanned repository or
   page can no longer hide text addressed to the agent in a file name or an
   identifier.
-
 - `evershield scan <name>-<version>.tgz`: scans an npm package tarball as
   `npm pack` writes it, every text file included, so a release can be gated
   on what installers actually receive.
